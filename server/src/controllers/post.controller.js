@@ -93,6 +93,18 @@ const cleanPostAuthorStatus = (posts) => {
   });
 };
 
+const isUserFollowingAuthor = async (userId, authorId) => {
+  const user = await User.findById(userId).select("following");
+
+  if (!user) {
+    return false;
+  }
+
+  return user.following.some(
+    (followingId) => followingId.toString() === authorId.toString()
+  );
+};
+
 const addLikeStatusToPosts = async (posts, userId) => {
   const cleanPosts = cleanPostAuthorStatus(posts);
 
@@ -347,11 +359,36 @@ export const getPostById = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Post not found");
   }
 
-  if (
-    post.visibility === "private" &&
-    post.author._id.toString() !== req.user._id.toString()
-  ) {
+  const isOwner = post.author._id.toString() === req.user._id.toString();
+
+  if (isOwner) {
+    const postsWithLikeStatus = await addLikeStatusToPosts([post], req.user._id);
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        { post: postsWithLikeStatus[0] },
+        "Post fetched successfully"
+      )
+    );
+  }
+
+  if (post.visibility === "private") {
     throw new ApiError(403, "You cannot view this private post");
+  }
+
+  if (post.visibility === "followers") {
+    const isFollowing = await isUserFollowingAuthor(
+      req.user._id,
+      post.author._id
+    );
+
+    if (!isFollowing) {
+      throw new ApiError(
+        403,
+        "Only followers can view this post"
+      );
+    }
   }
 
   const postsWithLikeStatus = await addLikeStatusToPosts([post], req.user._id);

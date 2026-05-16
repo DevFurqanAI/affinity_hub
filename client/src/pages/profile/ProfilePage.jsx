@@ -8,10 +8,14 @@ import ProfileHeader from "../../components/profile/ProfileHeader.jsx";
 import EditProfileModal from "../../components/profile/EditProfileModal.jsx";
 import FollowersModal from "../../components/profile/FollowersModal.jsx";
 import FollowingModal from "../../components/profile/FollowingModal.jsx";
+import PostList from "../../components/posts/PostList.jsx";
 import userService from "../../services/userService.js";
 import followService from "../../services/followService.js";
 import blockService from "../../services/blockService.js";
+import postService from "../../services/postService.js";
 import useAuthStore from "../../store/authStore.js";
+
+const PAGE_LIMIT = 10;
 
 function ProfilePage({ isMePage = false }) {
   const { username } = useParams();
@@ -23,23 +27,27 @@ function ProfilePage({ isMePage = false }) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isBlockedByMe, setIsBlockedByMe] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
+  const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isBlockLoading, setIsBlockLoading] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isFollowersOpen, setIsFollowersOpen] = useState(false);
   const [isFollowingOpen, setIsFollowingOpen] = useState(false);
 
+  const [posts, setPosts] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_LIMIT,
+    totalPages: 1,
+    totalPosts: 0
+  });
+
   const isOwnProfile =
     Boolean(loggedInUser?._id && profileUser?._id) &&
     loggedInUser._id === profileUser._id;
 
   const checkIfFollowing = async (targetUserId) => {
-    if (!loggedInUser?._id || !targetUserId) {
-      setIsFollowing(false);
-      return;
-    }
-
-    if (loggedInUser._id === targetUserId) {
+    if (!loggedInUser?._id || !targetUserId || loggedInUser._id === targetUserId) {
       setIsFollowing(false);
       return;
     }
@@ -48,21 +56,14 @@ function ProfilePage({ isMePage = false }) {
       const result = await followService.getFollowing(loggedInUser._id);
       const followingList = result.data?.following || [];
 
-      const found = followingList.some((user) => user._id === targetUserId);
-
-      setIsFollowing(found);
+      setIsFollowing(followingList.some((user) => user._id === targetUserId));
     } catch {
       setIsFollowing(false);
     }
   };
 
   const checkIfBlockedByMe = async (targetUserId) => {
-    if (!loggedInUser?._id || !targetUserId) {
-      setIsBlockedByMe(false);
-      return;
-    }
-
-    if (loggedInUser._id === targetUserId) {
+    if (!loggedInUser?._id || !targetUserId || loggedInUser._id === targetUserId) {
       setIsBlockedByMe(false);
       return;
     }
@@ -71,11 +72,58 @@ function ProfilePage({ isMePage = false }) {
       const result = await blockService.getBlockedUsers();
       const blockedUsers = result.data?.blockedUsers || [];
 
-      const found = blockedUsers.some((user) => user._id === targetUserId);
-
-      setIsBlockedByMe(found);
+      setIsBlockedByMe(blockedUsers.some((user) => user._id === targetUserId));
     } catch {
       setIsBlockedByMe(false);
+    }
+  };
+
+  const loadUserPosts = async (
+    profileUsername,
+    page = 1,
+    shouldReplace = true
+  ) => {
+    if (!profileUsername) {
+      return;
+    }
+
+    try {
+      setIsPostsLoading(true);
+
+      const result = await postService.getUserPosts(
+        profileUsername,
+        page,
+        PAGE_LIMIT
+      );
+
+      const newPosts = result.data?.posts || [];
+      const newPagination = result.data?.pagination || {
+        page,
+        limit: PAGE_LIMIT,
+        totalPages: 1,
+        totalPosts: newPosts.length
+      };
+
+      setPosts((previousPosts) =>
+        shouldReplace ? newPosts : [...previousPosts, ...newPosts]
+      );
+
+      setPagination(newPagination);
+    } catch (error) {
+      const message =
+        error.response?.data?.message || "Failed to load profile posts";
+
+      toast.error(message);
+
+      setPosts([]);
+      setPagination({
+        page: 1,
+        limit: PAGE_LIMIT,
+        totalPages: 1,
+        totalPosts: 0
+      });
+    } finally {
+      setIsPostsLoading(false);
     }
   };
 
@@ -93,12 +141,15 @@ function ProfilePage({ isMePage = false }) {
 
       await checkIfFollowing(user?._id);
       await checkIfBlockedByMe(user?._id);
+
+      await loadUserPosts(user?.username, 1, true);
     } catch (error) {
       const message =
         error.response?.data?.message || "Failed to load profile";
 
       toast.error(message);
       setProfileUser(null);
+      setPosts([]);
     } finally {
       setIsPageLoading(false);
     }
@@ -146,11 +197,21 @@ function ProfilePage({ isMePage = false }) {
         setIsBlockedByMe(false);
 
         toast.success(result.message || "User unblocked successfully");
+
+        await loadUserPosts(profileUser.username, 1, true);
       } else {
         const result = await blockService.blockUser(profileUser._id);
 
         setIsBlockedByMe(true);
         setIsFollowing(false);
+        setPosts([]);
+
+        setPagination({
+          page: 1,
+          limit: PAGE_LIMIT,
+          totalPages: 1,
+          totalPosts: 0
+        });
 
         setProfileUser((previousUser) => ({
           ...previousUser,
@@ -161,9 +222,7 @@ function ProfilePage({ isMePage = false }) {
         toast.success(result.message || "User blocked successfully");
       }
     } catch (error) {
-      const message =
-        error.response?.data?.message || "Block action failed";
-
+      const message = error.response?.data?.message || "Block action failed";
       toast.error(message);
     } finally {
       setIsBlockLoading(false);
@@ -175,12 +234,13 @@ function ProfilePage({ isMePage = false }) {
       setIsSaving(true);
 
       const result = await userService.updateProfile(profileData);
-
       const updatedUser = result.data?.user;
 
       setProfileUser(updatedUser);
 
       toast.success(result.message || "Profile updated successfully");
+
+      await loadUserPosts(updatedUser?.username, 1, true);
 
       return true;
     } catch (error) {
@@ -200,7 +260,6 @@ function ProfilePage({ isMePage = false }) {
       setIsSaving(true);
 
       const result = await userService.updateAvatar(avatarFile);
-
       const updatedUser = result.data?.user;
 
       setProfileUser(updatedUser);
@@ -218,6 +277,29 @@ function ProfilePage({ isMePage = false }) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handlePostUpdated = (updatedPost) => {
+    setPosts((previousPosts) =>
+      previousPosts.map((post) =>
+        post._id === updatedPost._id ? updatedPost : post
+      )
+    );
+  };
+
+  const handlePostDeleted = (postId) => {
+    setPosts((previousPosts) =>
+      previousPosts.filter((post) => post._id !== postId)
+    );
+
+    setPagination((previousPagination) => ({
+      ...previousPagination,
+      totalPosts: Math.max((previousPagination.totalPosts || 0) - 1, 0)
+    }));
+  };
+
+  const handleLoadMorePosts = () => {
+    loadUserPosts(profileUser?.username, pagination.page + 1, false);
   };
 
   const handleViewMyProfile = () => {
@@ -268,14 +350,21 @@ function ProfilePage({ isMePage = false }) {
           onFollowingClick={() => setIsFollowingOpen(true)}
         />
 
-        <section className="rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center">
-          <h2 className="text-lg font-bold text-slate-900">
-            Posts Coming Soon
-          </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            User posts and activity will be added in a later module.
-          </p>
-        </section>
+        {!isBlockedByMe || isOwnProfile ? (
+          <PostList
+            posts={posts}
+            isLoading={isPostsLoading}
+            emptyMessage={
+              isOwnProfile
+                ? "You have not created any posts yet."
+                : "This user has no public posts yet."
+            }
+            pagination={pagination}
+            onLoadMore={handleLoadMorePosts}
+            onPostUpdated={handlePostUpdated}
+            onPostDeleted={handlePostDeleted}
+          />
+        ) : null}
       </div>
 
       <EditProfileModal

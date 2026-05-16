@@ -8,7 +8,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import createNotification from "../utils/createNotification.js";
 
 const safeUserSelect =
-  "name username email bio avatar role status isVerified followersCount followingCount createdAt updatedAt";
+  "name username bio avatar role status isVerified followersCount followingCount createdAt updatedAt";
 
 const isValidMongoId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
@@ -46,6 +46,18 @@ const checkBlockBetweenUsers = async (userA, userB) => {
       }
     ]
   });
+};
+
+const isUserFollowingAuthor = async (userId, authorId) => {
+  const user = await User.findById(userId).select("following");
+
+  if (!user) {
+    return false;
+  }
+
+  return user.following.some(
+    (followingId) => followingId.toString() === authorId.toString()
+  );
 };
 
 /*
