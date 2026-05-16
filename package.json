@@ -1,0 +1,24 @@
+{
+  "name": "affinity-hub",
+  "version": "1.0.0",
+  "description": "Affinity Hub - MERN social media semester project",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "client": "npm run dev --prefix client",
+    "server": "npm run dev --prefix server"
+  },
+  "keywords": [
+    "mern",
+    "social-media",
+    "react",
+    "node",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
