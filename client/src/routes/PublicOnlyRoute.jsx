@@ -1,9 +1,11 @@
 import { Navigate, Outlet } from "react-router-dom";
 
-import useAuthStore from "../store/authStore.js";
 import Loader from "../components/common/Loader.jsx";
+import useAuthStore from "../store/authStore.js";
+import { getNextOnboardingPath } from "../utils/onboarding.js";
 
 function PublicOnlyRoute() {
+  const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthChecking = useAuthStore((state) => state.isAuthChecking);
 
@@ -16,7 +18,7 @@ function PublicOnlyRoute() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getNextOnboardingPath(user)} replace />;
   }
 
   return <Outlet />;

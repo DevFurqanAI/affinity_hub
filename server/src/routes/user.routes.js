@@ -1,36 +1,40 @@
 import { Router } from "express";
 
-import validate from "../middlewares/validate.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import validate from "../middlewares/validate.middleware.js";
 import { uploadAvatar } from "../middlewares/upload.middleware.js";
 import {
-  getMyProfile,
-  updateMyProfile,
-  getUserByUsername,
-  updateMyAvatar
+  getCurrentUserProfile,
+  completeProfile,
+  updateProfile,
+  getUserProfile,
+  updateAvatar
 } from "../controllers/user.controller.js";
 import {
-  updateProfileValidationSchema,
-  usernameParamValidationSchema
+  completeProfileValidationSchema,
+  updateProfileValidationSchema
 } from "../validations/user.validation.js";
 
 const router = Router();
 
-router.get("/me", verifyJWT, getMyProfile);
+router.get("/me", verifyJWT, getCurrentUserProfile);
+
+router.patch(
+  "/me/complete-profile",
+  verifyJWT,
+  validate(completeProfileValidationSchema),
+  completeProfile
+);
 
 router.patch(
   "/me",
   verifyJWT,
   validate(updateProfileValidationSchema),
-  updateMyProfile
+  updateProfile
 );
 
-router.patch("/me/avatar", verifyJWT, uploadAvatar, updateMyAvatar);
+router.patch("/me/avatar", verifyJWT, uploadAvatar, updateAvatar);
 
-router.get(
-  "/:username",
-  validate(usernameParamValidationSchema),
-  getUserByUsername
-);
+router.get("/:username", verifyJWT, getUserProfile);
 
 export default router;

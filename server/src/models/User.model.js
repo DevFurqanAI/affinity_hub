@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
       required: [true, "Name is required"],
       trim: true,
       minlength: [2, "Name must be at least 2 characters long"],
-      maxlength: [50, "Name must not be more than 50 characters"]
+      maxlength: [60, "Name must not be more than 60 characters"]
     },
 
     username: {
@@ -31,9 +31,22 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      required: [true, "Password is required"],
-      minlength: [6, "Password must be at least 6 characters long"],
-      select: false
+      required: function () {
+        return this.authProvider === "local";
+      },
+      select: false,
+      minlength: [6, "Password must be at least 6 characters long"]
+    },
+
+    authProvider: {
+      type: String,
+      enum: ["local", "google", "facebook"],
+      default: "local"
+    },
+
+    providerId: {
+      type: String,
+      default: null
     },
 
     bio: {
@@ -65,10 +78,53 @@ const userSchema = new mongoose.Schema(
       default: false
     },
 
+    /*
+    |--------------------------------------------------------------------------
+    | Onboarding flags
+    |--------------------------------------------------------------------------
+    | Important:
+    | - New users are explicitly created with false in register/google auth.
+    | - Old users should not be accidentally trapped in onboarding.
+    | - Undefined is treated as completed by frontend guards.
+    */
+    profileSetupCompleted: {
+      type: Boolean,
+      default: undefined
+    },
+
+    interestsSetupCompleted: {
+      type: Boolean,
+      default: undefined
+    },
+
+    emailVerificationOtpHash: {
+      type: String,
+      select: false,
+      default: null
+    },
+
+    emailVerificationOtpExpires: {
+      type: Date,
+      select: false,
+      default: null
+    },
+
+    emailVerificationOtpAttempts: {
+      type: Number,
+      default: 0,
+      select: false
+    },
+
+    lastVerificationOtpSentAt: {
+      type: Date,
+      select: false,
+      default: null
+    },
+
     refreshToken: {
       type: String,
-      default: null,
-      select: false
+      select: false,
+      default: null
     },
 
     lastLogin: {
@@ -115,36 +171,28 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| Hash Password Before Saving
-|--------------------------------------------------------------------------
-*/
 userSchema.pre("save", async function () {
-  if (!this.isModified("password")) {
+  if (!this.password || !this.isModified("password")) {
     return;
   }
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  this.password = await bcrypt.hash(this.password, 12);
 });
 
-/*
-|--------------------------------------------------------------------------
-| Compare Password
-|--------------------------------------------------------------------------
-*/
-userSchema.methods.comparePassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+userSchema.methods.comparePassword = async function (plainPassword) {
+  if (!this.password) {
+    return false;
+  }
+
+  return bcrypt.compare(plainPassword, this.password);
 };
 
-/*
-|--------------------------------------------------------------------------
-| Check If Account Is Locked
-|--------------------------------------------------------------------------
-*/
 userSchema.methods.isAccountLocked = function () {
-  return this.lockUntil && this.lockUntil > Date.now();
+  if (!this.lockUntil) {
+    return false;
+  }
+
+  return this.lockUntil > new Date();
 };
 
 const User = mongoose.model("User", userSchema);

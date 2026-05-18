@@ -68,7 +68,7 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
-        useAuthStore.getState().logout();
+        useAuthStore.getState().clearAuth();
         return Promise.reject(refreshError);
       }
     }

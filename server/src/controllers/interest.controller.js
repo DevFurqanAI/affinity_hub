@@ -7,11 +7,15 @@ import Post from "../models/Post.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { getBlockedUserIdsForViewer } from "../utils/block.helpers.js";
 
 const authorPopulate = {
   path: "author",
   select: "name username avatar"
 };
+
+const safeUserSelect =
+  "_id name username email bio avatar role status isVerified authProvider profileSetupCompleted interestsSetupCompleted followersCount followingCount createdAt updatedAt";
 
 const getPaginationValues = (req) => {
   const page = Number(req.query.page) || 1;
@@ -56,13 +60,6 @@ const updateInterestCounters = async (interestIds) => {
   }
 };
 
-/*
-|--------------------------------------------------------------------------
-| Seed Default Interests If Empty
-|--------------------------------------------------------------------------
-| This keeps the semester project easy to test.
-| If there are no interests, this function creates basic interests.
-*/
 const seedDefaultInterestsIfNeeded = async () => {
   const count = await Interest.countDocuments();
 
@@ -126,12 +123,6 @@ const seedDefaultInterestsIfNeeded = async () => {
   await Interest.insertMany(defaultInterests);
 };
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/interests
-|--------------------------------------------------------------------------
-| Returns all active interests.
-*/
 export const getAllInterests = asyncHandler(async (req, res) => {
   await seedDefaultInterestsIfNeeded();
 
@@ -141,18 +132,9 @@ export const getAllInterests = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(
-      new ApiResponse(200, { interests }, "Interests fetched successfully")
-    );
+    .json(new ApiResponse(200, { interests }, "Interests fetched successfully"));
 });
 
-/*
-|--------------------------------------------------------------------------
-| POST /api/interests/user
-|--------------------------------------------------------------------------
-| Logged-in user selects interests.
-| This replaces old interests with new selected interests.
-*/
 export const setMyInterests = asyncHandler(async (req, res) => {
   const { interestIds } = req.body;
 
@@ -189,27 +171,33 @@ export const setMyInterests = asyncHandler(async (req, res) => {
 
   await updateInterestCounters([...new Set(affectedInterestIds)]);
 
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  user.interestsSetupCompleted = true;
+  await user.save({ validateBeforeSave: false });
+
   const selectedInterests = await UserInterest.find({
     user: req.user._id
   }).populate("interest");
+
+  const safeUser = await User.findById(req.user._id).select(safeUserSelect);
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        interests: selectedInterests.map((item) => item.interest)
+        interests: selectedInterests.map((item) => item.interest),
+        user: safeUser
       },
       "User interests updated successfully"
     )
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/interests/user/me
-|--------------------------------------------------------------------------
-| Returns logged-in user's selected interests.
-*/
 export const getMyInterests = asyncHandler(async (req, res) => {
   const userInterests = await UserInterest.find({
     user: req.user._id
@@ -228,12 +216,6 @@ export const getMyInterests = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| POST /api/interests/post/:postId
-|--------------------------------------------------------------------------
-| Owner tags their post with interests.
-*/
 export const setPostInterests = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const { interestIds } = req.body;
@@ -300,12 +282,6 @@ export const setPostInterests = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/interests/recommended-users
-|--------------------------------------------------------------------------
-| Recommend active users who share interests with logged-in user.
-*/
 export const getRecommendedUsers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationValues(req);
 
@@ -333,6 +309,8 @@ export const getRecommendedUsers = asyncHandler(async (req, res) => {
     );
   }
 
+  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
+
   const matchingUserInterests = await UserInterest.aggregate([
     {
       $match: {
@@ -340,7 +318,7 @@ export const getRecommendedUsers = asyncHandler(async (req, res) => {
           $in: myInterestIds
         },
         user: {
-          $ne: req.user._id
+          $nin: [req.user._id, ...blockedUserIds]
         }
       }
     },
@@ -363,7 +341,8 @@ export const getRecommendedUsers = asyncHandler(async (req, res) => {
 
   const activeUsersQuery = {
     _id: {
-      $in: matchingUserIds
+      $in: matchingUserIds,
+      $nin: blockedUserIds
     },
     status: "active"
   };
@@ -414,12 +393,6 @@ export const getRecommendedUsers = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/interests/recommended-posts
-|--------------------------------------------------------------------------
-| Recommend public posts that match logged-in user's interests.
-*/
 export const getRecommendedPosts = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationValues(req);
 
@@ -447,6 +420,8 @@ export const getRecommendedPosts = asyncHandler(async (req, res) => {
     );
   }
 
+  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
+
   const matchingPostInterests = await PostInterest.aggregate([
     {
       $match: {
@@ -473,6 +448,9 @@ export const getRecommendedPosts = asyncHandler(async (req, res) => {
   const matchingPostIds = matchingPostInterests.map((item) => item._id);
 
   const activeUsers = await User.find({
+    _id: {
+      $nin: blockedUserIds
+    },
     status: "active"
   }).select("_id");
 

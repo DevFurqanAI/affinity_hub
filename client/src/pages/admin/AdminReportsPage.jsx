@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import PageContainer from "../../components/common/PageContainer.jsx";
@@ -26,34 +26,41 @@ function AdminReportsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  const loadReports = async (page = 1, shouldReplace = true) => {
-    try {
-      setIsLoading(true);
+  const loadReports = useCallback(
+    async (page = 1, shouldReplace = true) => {
+      try {
+        setIsLoading(true);
 
-      const result = await adminService.getReports({
-        page,
-        limit: PAGE_LIMIT,
-        status: filters.status,
-        targetType: filters.targetType
-      });
+        const result = await adminService.getReports({
+          page,
+          limit: PAGE_LIMIT,
+          status: filters.status,
+          targetType: filters.targetType
+        });
 
-      setReports((previousReports) =>
-        shouldReplace
-          ? result.data?.reports || []
-          : [...previousReports, ...(result.data?.reports || [])]
-      );
+        const newReports = result.data?.reports || [];
+        const newPagination = result.data?.pagination;
 
-      setPagination(result.data?.pagination);
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load reports");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setReports((previousReports) =>
+          shouldReplace ? newReports : [...previousReports, ...newReports]
+        );
+
+        setPagination(newPagination);
+      } catch (error) {
+        const message =
+          error.response?.data?.message || "Failed to load reports";
+
+        toast.error(message);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [filters.status, filters.targetType]
+  );
 
   useEffect(() => {
     loadReports(1, true);
-  }, [filters.status, filters.targetType]);
+  }, [loadReports]);
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target;

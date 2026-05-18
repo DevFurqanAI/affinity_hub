@@ -11,8 +11,13 @@ const userService = {
     return response.data;
   },
 
-  updateProfile: async (profileData) => {
-    const response = await api.patch("/users/me", profileData);
+  completeProfile: async (data) => {
+    const response = await api.patch("/users/me/complete-profile", data);
+    return response.data;
+  },
+
+  updateProfile: async (data) => {
+    const response = await api.patch("/users/me", data);
     return response.data;
   },
 

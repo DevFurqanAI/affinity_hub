@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import Button from "../common/Button.jsx";
@@ -7,6 +7,7 @@ import CommentItem from "./CommentItem.jsx";
 import commentService from "../../services/commentService.js";
 import useAuthStore from "../../store/authStore.js";
 
+const PAGE_LIMIT = 10;
 const COMMENT_LIMIT = 10;
 
 function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChange }) {
@@ -24,42 +25,36 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
-  const loadComments = async (page = 1, shouldReplace = true) => {
-    try {
-      setIsLoading(true);
+  const loadComments = useCallback(
+    async (page = 1, shouldReplace = true) => {
+      try {
+        setIsLoading(true);
 
-      const result = await commentService.getComments(
-        postId,
-        page,
-        COMMENT_LIMIT
-      );
+        const result = await commentService.getComments(postId, page, PAGE_LIMIT);
 
-      const newComments = result.data?.comments || [];
-      const newPagination = result.data?.pagination;
-      const newCommentsCount = result.data?.commentsCount ?? newPagination?.totalComments ?? 0;
+        const newComments = result.data?.comments || [];
+        const newPagination = result.data?.pagination;
 
-      setComments((previousComments) =>
-        shouldReplace ? newComments : [...previousComments, ...newComments]
-      );
+        setComments((previousComments) =>
+          shouldReplace ? newComments : [...previousComments, ...newComments]
+        );
 
-      setPagination(newPagination);
-      setCommentsCount(newCommentsCount);
-      onCommentsCountChange?.(newCommentsCount);
-    } catch (error) {
-      const message =
-        error.response?.data?.message || "Failed to load comments";
+        setPagination(newPagination);
+      } catch (error) {
+        const message =
+          error.response?.data?.message || "Failed to load comments";
 
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        toast.error(message);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [postId]
+  );
 
   useEffect(() => {
-    if (postId) {
-      loadComments(1, true);
-    }
-  }, [postId]);
+    loadComments(1, true);
+  }, [loadComments]);
 
   const handleCreateComment = async (event) => {
     event.preventDefault();

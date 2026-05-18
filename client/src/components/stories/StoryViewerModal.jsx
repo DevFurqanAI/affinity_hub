@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 import Button from "../common/Button.jsx";
@@ -27,6 +27,8 @@ function StoryViewerModal({
 
   const currentStory = stories?.[currentIndex];
 
+  const currentStoryId = currentStory?._id;
+
   const isOwner =
     Boolean(loggedInUser?._id && currentStory?.user?._id) &&
     loggedInUser._id === currentStory.user._id;
@@ -41,7 +43,7 @@ function StoryViewerModal({
     return Array.from({ length: totalStories }, (_, index) => index);
   }, [totalStories]);
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     if (currentIndex < totalStories - 1) {
       setCurrentIndex((previousIndex) => previousIndex + 1);
       setProgress(0);
@@ -50,15 +52,15 @@ function StoryViewerModal({
     }
 
     onClose();
-  };
+  }, [currentIndex, totalStories, onClose]);
 
-  const goPrevious = () => {
+  const goPrevious = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex((previousIndex) => previousIndex - 1);
       setProgress(0);
       setIsViewsOpen(false);
     }
-  };
+  }, [currentIndex]);
 
   useEffect(() => {
     if (isOpen) {
@@ -70,25 +72,25 @@ function StoryViewerModal({
 
   useEffect(() => {
     const markViewed = async () => {
-      if (!currentStory?._id) {
+      if (!currentStoryId) {
         return;
       }
 
       try {
-        await storyService.viewStory(currentStory._id);
-        onStoryViewed?.(currentStory._id);
+        await storyService.viewStory(currentStoryId);
+        onStoryViewed?.(currentStoryId);
       } catch {
         // Viewing should not break the story modal.
       }
     };
 
-    if (isOpen && currentStory?._id) {
+    if (isOpen && currentStoryId) {
       markViewed();
     }
-  }, [isOpen, currentStory?._id]);
+  }, [isOpen, currentStoryId, onStoryViewed]);
 
   useEffect(() => {
-    if (!isOpen || !currentStory || isViewsOpen) {
+    if (!isOpen || !currentStoryId || isViewsOpen) {
       return;
     }
 
@@ -109,7 +111,7 @@ function StoryViewerModal({
     return () => {
       clearInterval(interval);
     };
-  }, [isOpen, currentStory?._id, currentIndex, isViewsOpen]);
+  }, [isOpen, currentStoryId, isViewsOpen, goNext]);
 
   if (!isOpen || !currentStory) {
     return null;

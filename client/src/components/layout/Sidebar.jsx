@@ -12,8 +12,8 @@ function Sidebar() {
 
   const sidebarLinks = [
     {
-      label: "Feed",
-      path: "/feed"
+      label: "Home",
+      path: "/home"
     },
     {
       label: "Explore",
@@ -89,7 +89,7 @@ function Sidebar() {
           <p className="mt-1 text-xs leading-5 text-slate-300">
             {user?.role === "admin"
               ? "Moderation tools are enabled."
-              : "Your social dashboard is ready."}
+              : "Your main social page is ready."}
           </p>
         </div>
       </div>

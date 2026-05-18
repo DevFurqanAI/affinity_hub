@@ -4,7 +4,9 @@ import { Link, useNavigate } from "react-router-dom";
 import Button from "../../components/common/Button.jsx";
 import Input from "../../components/common/Input.jsx";
 import Card from "../../components/common/Card.jsx";
+import GoogleAuthButton from "../../components/auth/GoogleAuthButton.jsx";
 import useAuthStore from "../../store/authStore.js";
+import { getNextOnboardingPath } from "../../utils/onboarding.js";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -29,11 +31,13 @@ function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const success = await login(formData);
+    const result = await login(formData);
 
-    if (success) {
-      navigate("/feed", { replace: true });
+    if (!result.success) {
+      return;
     }
+
+    navigate(getNextOnboardingPath(result.user), { replace: true });
   };
 
   return (
@@ -81,6 +85,16 @@ function LoginPage() {
               {isLoading ? "Logging in..." : "Login"}
             </Button>
           </form>
+
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              or continue with
+            </span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <GoogleAuthButton label="Google users do not need OTP verification." />
 
           <p className="mt-6 text-center text-sm text-slate-500">
             Don't have an account?{" "}

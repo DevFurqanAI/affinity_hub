@@ -1,5 +1,3 @@
-import mongoose from "mongoose";
-
 import Like from "../models/Like.model.js";
 import Post from "../models/Post.model.js";
 import User from "../models/User.model.js";
@@ -7,36 +5,16 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import createNotification from "../utils/createNotification.js";
+import canViewPost from "../utils/canViewPost.js";
 
-const isValidMongoId = (id) => {
-  return mongoose.Types.ObjectId.isValid(id);
-};
-
-/*
-|--------------------------------------------------------------------------
-| POST /api/likes/:postId
-|--------------------------------------------------------------------------
-| Like a post.
-*/
 export const likePost = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const userId = req.user._id;
 
-  if (!isValidMongoId(postId)) {
-    throw new ApiError(400, "Invalid post id");
-  }
-
-  const post = await Post.findOne({
-    _id: postId,
-    isDeleted: false
-  });
-
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+  const { post } = await canViewPost(postId, userId);
 
   const alreadyLiked = await Like.findOne({
-    post: postId,
+    post: post._id,
     user: userId
   });
 
@@ -45,17 +23,26 @@ export const likePost = asyncHandler(async (req, res) => {
   }
 
   await Like.create({
-    post: postId,
+    post: post._id,
     user: userId
   });
 
-  post.likesCount += 1;
-  await post.save({ validateBeforeSave: false });
+  const updatedPost = await Post.findByIdAndUpdate(
+    post._id,
+    {
+      $inc: {
+        likesCount: 1
+      }
+    },
+    {
+      new: true
+    }
+  );
 
   const sender = await User.findById(userId).select("name");
 
   await createNotification({
-    receiver: post.author,
+    receiver: post.author._id,
     sender: userId,
     type: "like",
     post: post._id,
@@ -67,40 +54,23 @@ export const likePost = asyncHandler(async (req, res) => {
     new ApiResponse(
       201,
       {
-        postId,
+        postId: post._id,
         isLikedByMe: true,
-        likesCount: post.likesCount
+        likesCount: updatedPost.likesCount
       },
       "Post liked successfully"
     )
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| DELETE /api/likes/:postId
-|--------------------------------------------------------------------------
-| Unlike a post.
-*/
 export const unlikePost = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const userId = req.user._id;
 
-  if (!isValidMongoId(postId)) {
-    throw new ApiError(400, "Invalid post id");
-  }
-
-  const post = await Post.findOne({
-    _id: postId,
-    isDeleted: false
-  });
-
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+  const { post } = await canViewPost(postId, userId);
 
   const existingLike = await Like.findOne({
-    post: postId,
+    post: post._id,
     user: userId
   });
 
@@ -110,47 +80,44 @@ export const unlikePost = asyncHandler(async (req, res) => {
 
   await Like.findByIdAndDelete(existingLike._id);
 
-  post.likesCount = Math.max(post.likesCount - 1, 0);
-  await post.save({ validateBeforeSave: false });
+  const updatedPost = await Post.findByIdAndUpdate(
+    post._id,
+    {
+      $inc: {
+        likesCount: -1
+      }
+    },
+    {
+      new: true
+    }
+  );
+
+  if (updatedPost.likesCount < 0) {
+    updatedPost.likesCount = 0;
+    await updatedPost.save({ validateBeforeSave: false });
+  }
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        postId,
+        postId: post._id,
         isLikedByMe: false,
-        likesCount: post.likesCount
+        likesCount: updatedPost.likesCount
       },
       "Post unliked successfully"
     )
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/likes/:postId/status
-|--------------------------------------------------------------------------
-| Check if logged-in user liked a post.
-*/
 export const getLikeStatus = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const userId = req.user._id;
 
-  if (!isValidMongoId(postId)) {
-    throw new ApiError(400, "Invalid post id");
-  }
-
-  const post = await Post.findOne({
-    _id: postId,
-    isDeleted: false
-  }).select("_id likesCount");
-
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+  const { post } = await canViewPost(postId, userId);
 
   const existingLike = await Like.findOne({
-    post: postId,
+    post: post._id,
     user: userId
   });
 
@@ -158,7 +125,7 @@ export const getLikeStatus = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        postId,
+        postId: post._id,
         isLikedByMe: Boolean(existingLike),
         likesCount: post.likesCount
       },

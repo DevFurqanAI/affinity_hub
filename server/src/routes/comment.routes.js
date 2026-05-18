@@ -1,7 +1,7 @@
 import { Router } from "express";
 
-import { verifyJWT } from "../middlewares/auth.middleware.js";
 import validate from "../middlewares/validate.middleware.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 import {
   createComment,
   getCommentsByPost,
@@ -10,37 +10,27 @@ import {
 } from "../controllers/comment.controller.js";
 import {
   createCommentValidationSchema,
-  getCommentsValidationSchema,
-  updateCommentValidationSchema,
-  deleteCommentValidationSchema
+  updateCommentValidationSchema
 } from "../validations/comment.validation.js";
 
 const router = Router();
 
-router.use(verifyJWT);
-
 router.post(
   "/:postId",
+  verifyJWT,
   validate(createCommentValidationSchema),
   createComment
 );
 
-router.get(
-  "/:postId",
-  validate(getCommentsValidationSchema),
-  getCommentsByPost
-);
+router.get("/:postId", verifyJWT, getCommentsByPost);
 
 router.patch(
   "/:commentId",
+  verifyJWT,
   validate(updateCommentValidationSchema),
   updateComment
 );
 
-router.delete(
-  "/:commentId",
-  validate(deleteCommentValidationSchema),
-  deleteComment
-);
+router.delete("/:commentId", verifyJWT, deleteComment);
 
 export default router;

@@ -12,8 +12,7 @@ import {
 } from "../controllers/interest.controller.js";
 import {
   setUserInterestsValidationSchema,
-  setPostInterestsValidationSchema,
-  recommendationQueryValidationSchema
+  setPostInterestsValidationSchema
 } from "../validations/interest.validation.js";
 
 const router = Router();
@@ -22,7 +21,11 @@ router.use(verifyJWT);
 
 router.get("/", getAllInterests);
 
-router.post("/user", validate(setUserInterestsValidationSchema), setMyInterests);
+router.post(
+  "/user",
+  validate(setUserInterestsValidationSchema),
+  setMyInterests
+);
 
 router.get("/user/me", getMyInterests);
 
@@ -32,16 +35,8 @@ router.post(
   setPostInterests
 );
 
-router.get(
-  "/recommended-users",
-  validate(recommendationQueryValidationSchema),
-  getRecommendedUsers
-);
+router.get("/recommended-users", getRecommendedUsers);
 
-router.get(
-  "/recommended-posts",
-  validate(recommendationQueryValidationSchema),
-  getRecommendedPosts
-);
+router.get("/recommended-posts", getRecommendedPosts);
 
 export default router;

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
+import { Navigate } from "react-router-dom";
+import useAuthStore from "../../store/authStore.js";
 import PageContainer from "../../components/common/PageContainer.jsx";
 import Card from "../../components/common/Card.jsx";
 import Button from "../../components/common/Button.jsx";
@@ -123,6 +125,16 @@ function NotificationsPage() {
 
     return icons[type] || "🔔";
   };
+
+  const user = useAuthStore((state) => state.user);
+  const isAuthChecking = useAuthStore((state) => state.isAuthChecking);
+
+  const needsEmailVerification =
+    user?.authProvider === "local" && user?.isVerified === false;
+
+  if (!isAuthChecking && needsEmailVerification) {
+    return <Navigate to="/verify-email" replace />;
+  }
 
   return (
     <PageContainer

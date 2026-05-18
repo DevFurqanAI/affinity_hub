@@ -1,12 +1,15 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import MainLayout from "../components/layout/MainLayout.jsx";
-import HomePage from "../pages/HomePage.jsx";
+import LandingPage from "../pages/home/HomePage.jsx";
 import NotFoundPage from "../pages/NotFoundPage.jsx";
 import LoginPage from "../pages/auth/LoginPage.jsx";
 import RegisterPage from "../pages/auth/RegisterPage.jsx";
+import VerifyEmailPage from "../pages/auth/VerifyEmailPage.jsx";
+import CompleteProfilePage from "../pages/auth/CompleteProfilePage.jsx";
+import ChooseInterestsPage from "../pages/auth/ChooseInterestsPage.jsx";
 import ProfilePage from "../pages/profile/ProfilePage.jsx";
-import FeedPage from "../pages/feed/FeedPage.jsx";
+import HomePage from "../pages/home/HomePage.jsx";
 import ExplorePage from "../pages/explore/ExplorePage.jsx";
 import NotificationsPage from "../pages/notifications/NotificationsPage.jsx";
 import SearchPage from "../pages/search/SearchPage.jsx";
@@ -20,10 +23,14 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LandingPage />} />
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/feed" element={<FeedPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/complete-profile" element={<CompleteProfilePage />} />
+          <Route path="/choose-interests" element={<ChooseInterestsPage />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/feed" element={<Navigate to="/home" replace />} />
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -32,63 +32,61 @@ function SearchPage() {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const loadUsers = async (page = 1, shouldReplace = true) => {
-    if (!query.trim()) {
-      setUsers([]);
-      return;
-    }
+  const loadUsers = useCallback(
+    async (page = 1, shouldReplace = true) => {
+      if (!query.trim()) {
+        setUsers([]);
+        return;
+      }
 
-    try {
-      setIsLoading(true);
+      try {
+        setIsLoading(true);
 
-      const result = await searchService.searchUsers(query, page, PAGE_LIMIT);
+        const result = await searchService.searchUsers(query, page, PAGE_LIMIT);
 
-      const newUsers = result.data?.users || [];
-      const newPagination = result.data?.pagination;
+        setUsers((previousUsers) =>
+          shouldReplace
+            ? result.data?.users || []
+            : [...previousUsers, ...(result.data?.users || [])]
+        );
 
-      setUsers((previousUsers) =>
-        shouldReplace ? newUsers : [...previousUsers, ...newUsers]
-      );
+        setUserPagination(result.data?.pagination);
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Failed to search users");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [query]
+);
 
-      setUserPagination(newPagination);
-    } catch (error) {
-      const message =
-        error.response?.data?.message || "Failed to search users";
+  const loadPosts = useCallback(
+    async (page = 1, shouldReplace = true) => {
+      if (!query.trim()) {
+        setPosts([]);
+        return;
+      }
 
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      try {
+        setIsLoading(true);
 
-  const loadPosts = async (page = 1, shouldReplace = true) => {
-    if (!query.trim()) {
-      setPosts([]);
-      return;
-    }
+        const result = await searchService.searchPosts(query, page, PAGE_LIMIT);
 
-    try {
-      setIsLoading(true);
+        setPosts((previousPosts) =>
+          shouldReplace
+            ? result.data?.posts || []
+            : [...previousPosts, ...(result.data?.posts || [])]
+        );
 
-      const result = await searchService.searchPosts(query, page, PAGE_LIMIT);
-
-      const newPosts = result.data?.posts || [];
-      const newPagination = result.data?.pagination;
-
-      setPosts((previousPosts) =>
-        shouldReplace ? newPosts : [...previousPosts, ...newPosts]
-      );
-
-      setPostPagination(newPagination);
-    } catch (error) {
-      const message =
-        error.response?.data?.message || "Failed to search posts";
-
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setPostPagination(result.data?.pagination);
+      } catch (error) {
+        toast.error(error.response?.data?.message || "Failed to search posts");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [query]
+  );
 
   useEffect(() => {
     setUsers([]);
@@ -99,7 +97,7 @@ function SearchPage() {
     } else {
       loadPosts(1, true);
     }
-  }, [query, activeTab]);
+  }, [query, activeTab, loadUsers, loadPosts]);
 
   const handleLoadMoreUsers = () => {
     loadUsers(userPagination.page + 1, false);

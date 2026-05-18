@@ -8,6 +8,10 @@ import env from "../config/env.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import {
+  getBlockedUserIdsForViewer,
+  hasBlockRelation
+} from "../utils/block.helpers.js";
 
 const storyOwnerPopulate = {
   path: "user",
@@ -23,19 +27,6 @@ const isValidMongoId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
 
-const checkCloudinaryConfig = () => {
-  if (
-    !env.cloudinaryCloudName ||
-    !env.cloudinaryApiKey ||
-    !env.cloudinaryApiSecret
-  ) {
-    throw new ApiError(
-      500,
-      "Cloudinary configuration is missing. Please check server/.env"
-    );
-  }
-};
-
 const getMediaTypeFromMime = (mimeType) => {
   if (mimeType.startsWith("image/")) {
     return "image";
@@ -49,8 +40,6 @@ const getMediaTypeFromMime = (mimeType) => {
 };
 
 const uploadBufferToCloudinary = (fileBuffer, mediaType) => {
-  checkCloudinaryConfig();
-
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -71,12 +60,6 @@ const uploadBufferToCloudinary = (fileBuffer, mediaType) => {
   });
 };
 
-/*
-|--------------------------------------------------------------------------
-| POST /api/stories
-|--------------------------------------------------------------------------
-| Create story with image/video media.
-*/
 export const createStory = asyncHandler(async (req, res) => {
   const { caption = "" } = req.body;
 
@@ -90,22 +73,7 @@ export const createStory = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid story media type");
   }
 
-  let uploadedMedia;
-
-  try {
-    uploadedMedia = await uploadBufferToCloudinary(req.file.buffer, mediaType);
-  } catch (error) {
-    console.error("Cloudinary story upload error:", error);
-
-    throw new ApiError(
-      500,
-      "Story media upload failed. Please check Cloudinary credentials or internet connection."
-    );
-  }
-
-  if (!uploadedMedia?.secure_url || !uploadedMedia?.public_id) {
-    throw new ApiError(500, "Story upload failed. No media URL received.");
-  }
+  const uploadedMedia = await uploadBufferToCloudinary(req.file.buffer, mediaType);
 
   const story = await Story.create({
     user: req.user._id,
@@ -129,14 +97,6 @@ export const createStory = asyncHandler(async (req, res) => {
     );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/stories/feed
-|--------------------------------------------------------------------------
-| Feed includes:
-| - current user's stories
-| - followed users' stories
-*/
 export const getStoryFeed = asyncHandler(async (req, res) => {
   const currentUser = await User.findById(req.user._id).select("following");
 
@@ -144,7 +104,16 @@ export const getStoryFeed = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Current user not found");
   }
 
-  const userIds = [req.user._id, ...currentUser.following];
+  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
+
+  const allowedFollowingIds = currentUser.following.filter(
+    (followingId) =>
+      !blockedUserIds.some(
+        (blockedId) => blockedId.toString() === followingId.toString()
+      )
+  );
+
+  const userIds = [req.user._id, ...allowedFollowingIds];
 
   const stories = await Story.find({
     user: {
@@ -189,13 +158,6 @@ export const getStoryFeed = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| POST /api/stories/:storyId/view
-|--------------------------------------------------------------------------
-| Mark story as viewed by logged-in user.
-| Duplicate views are prevented.
-*/
 export const viewStory = asyncHandler(async (req, res) => {
   const { storyId } = req.params;
 
@@ -212,6 +174,17 @@ export const viewStory = asyncHandler(async (req, res) => {
 
   if (!story) {
     throw new ApiError(404, "Story not found or expired");
+  }
+
+  const storyOwnerId = story.user?._id || story.user;
+  const isOwner = storyOwnerId.toString() === req.user._id.toString();
+
+  if (!isOwner) {
+    const isBlocked = await hasBlockRelation(req.user._id, storyOwnerId);
+
+    if (isBlocked) {
+      throw new ApiError(403, "You cannot view this story");
+    }
   }
 
   const existingView = await StoryView.findOne({
@@ -252,12 +225,6 @@ export const viewStory = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/stories/:storyId/views
-|--------------------------------------------------------------------------
-| Only story owner can see viewers.
-*/
 export const getStoryViews = asyncHandler(async (req, res) => {
   const { storyId } = req.params;
 
@@ -293,12 +260,6 @@ export const getStoryViews = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| DELETE /api/stories/:storyId
-|--------------------------------------------------------------------------
-| Only owner can delete story.
-*/
 export const deleteStory = asyncHandler(async (req, res) => {
   const { storyId } = req.params;
 
@@ -317,13 +278,9 @@ export const deleteStory = asyncHandler(async (req, res) => {
   }
 
   if (story.media?.publicId) {
-    try {
-      await cloudinary.uploader.destroy(story.media.publicId, {
-        resource_type: story.mediaType === "video" ? "video" : "image"
-      });
-    } catch (error) {
-      console.error("Cloudinary story delete error:", error);
-    }
+    await cloudinary.uploader.destroy(story.media.publicId, {
+      resource_type: story.mediaType === "video" ? "video" : "image"
+    });
   }
 
   await StoryView.deleteMany({

@@ -5,6 +5,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import createNotification from "../utils/createNotification.js";
+import canViewPost from "../utils/canViewPost.js";
 
 const commentAuthorPopulate = {
   path: "author",
@@ -26,33 +27,29 @@ const getPaginationValues = (req) => {
   };
 };
 
-/*
-|--------------------------------------------------------------------------
-| POST /api/comments/:postId
-|--------------------------------------------------------------------------
-| Create a comment on a non-deleted post.
-*/
 export const createComment = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const { content } = req.body;
 
-  const post = await Post.findOne({
-    _id: postId,
-    isDeleted: false
-  });
-
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+  const { post } = await canViewPost(postId, req.user._id);
 
   const comment = await Comment.create({
-    post: postId,
+    post: post._id,
     author: req.user._id,
     content
   });
 
-  post.commentsCount += 1;
-  await post.save({ validateBeforeSave: false });
+  const updatedPost = await Post.findByIdAndUpdate(
+    post._id,
+    {
+      $inc: {
+        commentsCount: 1
+      }
+    },
+    {
+      new: true
+    }
+  );
 
   const populatedComment = await Comment.findById(comment._id).populate(
     commentAuthorPopulate
@@ -61,7 +58,7 @@ export const createComment = asyncHandler(async (req, res) => {
   const sender = await User.findById(req.user._id).select("name");
 
   await createNotification({
-    receiver: post.author,
+    receiver: post.author._id,
     sender: req.user._id,
     type: "comment",
     post: post._id,
@@ -75,34 +72,21 @@ export const createComment = asyncHandler(async (req, res) => {
       201,
       {
         comment: populatedComment,
-        commentsCount: post.commentsCount
+        commentsCount: updatedPost.commentsCount
       },
       "Comment added successfully"
     )
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/comments/:postId
-|--------------------------------------------------------------------------
-| Get comments of a post with pagination.
-*/
 export const getCommentsByPost = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const { page, limit, skip } = getPaginationValues(req);
 
-  const post = await Post.findOne({
-    _id: postId,
-    isDeleted: false
-  }).select("_id commentsCount");
-
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+  const { post } = await canViewPost(postId, req.user._id);
 
   const query = {
-    post: postId,
+    post: post._id,
     isDeleted: false
   };
 
@@ -134,12 +118,6 @@ export const getCommentsByPost = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| PATCH /api/comments/:commentId
-|--------------------------------------------------------------------------
-| Only comment owner can edit.
-*/
 export const updateComment = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   const { content } = req.body;
@@ -157,14 +135,7 @@ export const updateComment = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You can only edit your own comment");
   }
 
-  const post = await Post.findOne({
-    _id: comment.post,
-    isDeleted: false
-  });
-
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+  await canViewPost(comment.post, req.user._id);
 
   comment.content = content;
   await comment.save();
@@ -173,24 +144,17 @@ export const updateComment = asyncHandler(async (req, res) => {
     commentAuthorPopulate
   );
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { comment: updatedComment },
-        "Comment updated successfully"
-      )
-    );
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        comment: updatedComment
+      },
+      "Comment updated successfully"
+    )
+  );
 });
 
-/*
-|--------------------------------------------------------------------------
-| DELETE /api/comments/:commentId
-|--------------------------------------------------------------------------
-| Only comment owner can delete.
-| Soft delete comment and reduce Post.commentsCount.
-*/
 export const deleteComment = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
 
@@ -207,27 +171,34 @@ export const deleteComment = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You can only delete your own comment");
   }
 
-  const post = await Post.findOne({
-    _id: comment.post,
-    isDeleted: false
-  });
-
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+  const { post } = await canViewPost(comment.post, req.user._id);
 
   comment.isDeleted = true;
   await comment.save({ validateBeforeSave: false });
 
-  post.commentsCount = Math.max(post.commentsCount - 1, 0);
-  await post.save({ validateBeforeSave: false });
+  const updatedPost = await Post.findByIdAndUpdate(
+    post._id,
+    {
+      $inc: {
+        commentsCount: -1
+      }
+    },
+    {
+      new: true
+    }
+  );
+
+  if (updatedPost.commentsCount < 0) {
+    updatedPost.commentsCount = 0;
+    await updatedPost.save({ validateBeforeSave: false });
+  }
 
   return res.status(200).json(
     new ApiResponse(
       200,
       {
         commentId,
-        commentsCount: post.commentsCount
+        commentsCount: updatedPost.commentsCount
       },
       "Comment deleted successfully"
     )

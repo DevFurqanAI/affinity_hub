@@ -7,8 +7,8 @@ import useAuthStore from "../../store/authStore.js";
 
 const navLinks = [
   {
-    label: "Feed",
-    path: "/feed"
+    label: "Home",
+    path: "/home"
   },
   {
     label: "Explore",
@@ -37,7 +37,7 @@ function Navbar() {
       <nav className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex items-center justify-between gap-4">
           <Link
-            to={isAuthenticated ? "/feed" : "/"}
+            to={isAuthenticated ? "/home" : "/"}
             className="flex min-w-fit items-center gap-2"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-lg font-bold text-white shadow-sm">

@@ -4,58 +4,20 @@ import env from "../config/env.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { hasBlockRelation } from "../utils/block.helpers.js";
 
-const safeUserSelect = "-password -refreshToken";
+const safeUserSelect =
+  "_id name username email bio avatar role status isVerified authProvider profileSetupCompleted interestsSetupCompleted followersCount followingCount createdAt updatedAt";
 
-const getSafeUserObject = (user) => {
-  const userObject = user.toObject();
+const publicUserSelect =
+  "_id name username bio avatar role status isVerified authProvider profileSetupCompleted interestsSetupCompleted followersCount followingCount createdAt updatedAt";
 
-  delete userObject.password;
-  delete userObject.refreshToken;
-
-  return userObject;
-};
-
-/*
-|--------------------------------------------------------------------------
-| Check Cloudinary Config
-|--------------------------------------------------------------------------
-*/
-const checkCloudinaryConfig = () => {
-  if (
-    !env.cloudinaryCloudName ||
-    !env.cloudinaryApiKey ||
-    !env.cloudinaryApiSecret
-  ) {
-    throw new ApiError(
-      500,
-      "Cloudinary configuration is missing. Please check server/.env"
-    );
-  }
-};
-
-/*
-|--------------------------------------------------------------------------
-| Upload Buffer To Cloudinary
-|--------------------------------------------------------------------------
-*/
 const uploadBufferToCloudinary = (fileBuffer) => {
-  checkCloudinaryConfig();
-
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: `${env.cloudinaryFolder}/avatars`,
-        resource_type: "image",
-        timeout: 60000,
-        transformation: [
-          {
-            width: 500,
-            height: 500,
-            crop: "fill",
-            gravity: "face"
-          }
-        ]
+        resource_type: "image"
       },
       (error, result) => {
         if (error) {
@@ -71,12 +33,7 @@ const uploadBufferToCloudinary = (fileBuffer) => {
   });
 };
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/users/me
-|--------------------------------------------------------------------------
-*/
-export const getMyProfile = asyncHandler(async (req, res) => {
+export const getCurrentUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select(safeUserSelect);
 
   if (!user) {
@@ -88,12 +45,47 @@ export const getMyProfile = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, { user }, "Profile fetched successfully"));
 });
 
-/*
-|--------------------------------------------------------------------------
-| PATCH /api/users/me
-|--------------------------------------------------------------------------
-*/
-export const updateMyProfile = asyncHandler(async (req, res) => {
+export const completeProfile = asyncHandler(async (req, res) => {
+  const { name, username, bio = "" } = req.body;
+
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const existingUsername = await User.findOne({
+    username,
+    _id: {
+      $ne: user._id
+    }
+  });
+
+  if (existingUsername) {
+    throw new ApiError(409, "Username is already taken");
+  }
+
+  user.name = name;
+  user.username = username;
+  user.bio = bio;
+  user.profileSetupCompleted = true;
+
+  await user.save();
+
+  const updatedUser = await User.findById(user._id).select(safeUserSelect);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user: updatedUser
+      },
+      "Profile completed successfully"
+    )
+  );
+});
+
+export const updateProfile = asyncHandler(async (req, res) => {
   const { name, username, bio } = req.body;
 
   const user = await User.findById(req.user._id);
@@ -103,14 +95,14 @@ export const updateMyProfile = asyncHandler(async (req, res) => {
   }
 
   if (username && username !== user.username) {
-    const usernameExists = await User.findOne({
+    const existingUsername = await User.findOne({
       username,
       _id: {
         $ne: user._id
       }
     });
 
-    if (usernameExists) {
+    if (existingUsername) {
       throw new ApiError(409, "Username is already taken");
     }
 
@@ -127,27 +119,33 @@ export const updateMyProfile = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  const safeUser = getSafeUserObject(user);
+  const updatedUser = await User.findById(user._id).select(safeUserSelect);
 
   return res
     .status(200)
-    .json(
-      new ApiResponse(200, { user: safeUser }, "Profile updated successfully")
-    );
+    .json(new ApiResponse(200, { user: updatedUser }, "Profile updated successfully"));
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/users/:username
-|--------------------------------------------------------------------------
-*/
-export const getUserByUsername = asyncHandler(async (req, res) => {
+export const getUserProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
 
-  const user = await User.findOne({ username }).select(safeUserSelect);
+  const user = await User.findOne({
+    username,
+    status: "active"
+  }).select(publicUserSelect);
 
   if (!user) {
     throw new ApiError(404, "User not found");
+  }
+
+  const isOwnProfile = user._id.toString() === req.user._id.toString();
+
+  if (!isOwnProfile) {
+    const isBlocked = await hasBlockRelation(req.user._id, user._id);
+
+    if (isBlocked) {
+      throw new ApiError(403, "You cannot view this profile");
+    }
   }
 
   return res
@@ -155,51 +153,31 @@ export const getUserByUsername = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, { user }, "User profile fetched successfully"));
 });
 
-/*
-|--------------------------------------------------------------------------
-| PATCH /api/users/me/avatar
-|--------------------------------------------------------------------------
-*/
-export const updateMyAvatar = asyncHandler(async (req, res) => {
+export const updateAvatar = asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new ApiError(400, "Avatar image is required");
   }
 
-  let uploadedImage;
-
-  try {
-    uploadedImage = await uploadBufferToCloudinary(req.file.buffer);
-  } catch (error) {
-    console.error("Cloudinary upload error:", error);
-
-    throw new ApiError(
-      500,
-      "Avatar upload failed. Please check Cloudinary credentials or internet connection."
-    );
-  }
-
-  if (!uploadedImage?.secure_url) {
-    throw new ApiError(500, "Avatar upload failed. No image URL received.");
-  }
-
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      $set: {
-        avatar: uploadedImage.secure_url
-      }
-    },
-    {
-      new: true,
-      runValidators: true
-    }
-  ).select(safeUserSelect);
+  const user = await User.findById(req.user._id);
 
   if (!user) {
     throw new ApiError(404, "User not found");
   }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, { user }, "Avatar updated successfully"));
+  const uploadedAvatar = await uploadBufferToCloudinary(req.file.buffer);
+
+  user.avatar = uploadedAvatar.secure_url;
+  await user.save({ validateBeforeSave: false });
+
+  const updatedUser = await User.findById(user._id).select(safeUserSelect);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user: updatedUser
+      },
+      "Avatar updated successfully"
+    )
+  );
 });

@@ -1,20 +1,49 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import Button from "../common/Button.jsx";
 import Loader from "../common/Loader.jsx";
 import notificationService from "../../services/notificationService.js";
+import useAuthStore from "../../store/authStore.js";
 
 function NotificationDropdown() {
   const dropdownRef = useRef(null);
+
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthChecking = useAuthStore((state) => state.isAuthChecking);
 
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  const loadNotifications = async () => {
+  const needsEmailVerification =
+    user?.authProvider === "local" && user?.isVerified === false;
+
+  /*
+  |--------------------------------------------------------------------------
+  | Important
+  |--------------------------------------------------------------------------
+  | Do not load notifications until:
+  | - auth check is finished
+  | - user exists
+  | - user is verified
+  */
+  const canLoadNotifications =
+    !isAuthChecking &&
+    isAuthenticated &&
+    Boolean(user?._id) &&
+    !needsEmailVerification;
+
+  const loadNotifications = useCallback(async () => {
+    if (!canLoadNotifications) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -26,22 +55,24 @@ function NotificationDropdown() {
       const message =
         error.response?.data?.message || "Failed to load notifications";
 
-      toast.error(message);
+      if (error.response?.status !== 403) {
+        toast.error(message);
+      }
+
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [canLoadNotifications]);
 
   useEffect(() => {
     loadNotifications();
-  }, []);
+  }, [loadNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
@@ -54,11 +85,12 @@ function NotificationDropdown() {
   }, []);
 
   const handleToggleDropdown = () => {
-    setIsOpen((previousValue) => !previousValue);
-
-    if (!isOpen) {
-      loadNotifications();
+    if (!canLoadNotifications) {
+      setIsOpen(false);
+      return;
     }
+
+    setIsOpen((previousValue) => !previousValue);
   };
 
   const handleMarkAsRead = async (notificationId) => {
@@ -68,9 +100,7 @@ function NotificationDropdown() {
 
       setNotifications((previousNotifications) =>
         previousNotifications.map((notification) =>
-          notification._id === notificationId
-            ? updatedNotification
-            : notification
+          notification._id === notificationId ? updatedNotification : notification
         )
       );
 
@@ -105,56 +135,18 @@ function NotificationDropdown() {
     }
   };
 
-  const handleDeleteNotification = async (notificationId) => {
-    try {
-      const notificationToDelete = notifications.find(
-        (notification) => notification._id === notificationId
-      );
-
-      const result = await notificationService.deleteNotification(
-        notificationId
-      );
-
-      setNotifications((previousNotifications) =>
-        previousNotifications.filter(
-          (notification) => notification._id !== notificationId
-        )
-      );
-
-      if (notificationToDelete && !notificationToDelete.isRead) {
-        setUnreadCount((previousCount) => Math.max(previousCount - 1, 0));
-      }
-
-      toast.success(result.message || "Notification deleted");
-    } catch (error) {
-      const message =
-        error.response?.data?.message || "Failed to delete notification";
-
-      toast.error(message);
-    }
-  };
-
-  const getNotificationIcon = (type) => {
-    const icons = {
-      follow: "👤",
-      like: "❤️",
-      comment: "💬",
-      report_action: "🚩",
-      ban: "⛔",
-      appeal: "📨"
-    };
-
-    return icons[type] || "🔔";
-  };
+  if (!canLoadNotifications) {
+    return null;
+  }
 
   return (
     <div ref={dropdownRef} className="relative">
       <button
         type="button"
         onClick={handleToggleDropdown}
-        className="relative rounded-full border border-slate-200 bg-white p-2 text-slate-700 transition hover:bg-slate-100"
+        className="relative rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
       >
-        <span className="text-lg">🔔</span>
+        <span className="text-xl">🔔</span>
 
         {unreadCount > 0 ? (
           <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
@@ -164,119 +156,87 @@ function NotificationDropdown() {
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl sm:w-96">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+        <div className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl sm:w-96">
+          <div className="flex items-center justify-between border-b border-slate-100 p-4">
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Notifications
-              </h2>
+              <h2 className="font-bold text-slate-900">Notifications</h2>
               <p className="text-xs text-slate-500">
-                {unreadCount} unread notification
-                {unreadCount === 1 ? "" : "s"}
+                {unreadCount} unread notification{unreadCount === 1 ? "" : "s"}
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleMarkAllAsRead}
-              className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
-            >
-              Mark all read
-            </button>
+            {unreadCount > 0 ? (
+              <button
+                type="button"
+                onClick={handleMarkAllAsRead}
+                className="text-xs font-bold text-slate-600 hover:text-slate-900"
+              >
+                Mark all read
+              </button>
+            ) : null}
           </div>
 
-          <div className="max-h-96 overflow-y-auto p-3">
+          <div className="max-h-96 overflow-y-auto">
             {isLoading ? <Loader text="Loading notifications..." /> : null}
 
             {!isLoading && notifications.length === 0 ? (
-              <p className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500">
-                No notifications yet.
-              </p>
+              <div className="p-6 text-center">
+                <p className="text-sm font-semibold text-slate-700">
+                  No notifications yet
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Likes, comments, and follows will appear here.
+                </p>
+              </div>
             ) : null}
 
-            {!isLoading
-              ? notifications.map((notification) => {
-                  const avatarText =
-                    notification.sender?.name?.charAt(0)?.toUpperCase() ||
-                    "A";
+            {notifications.map((notification) => (
+              <div
+                key={notification._id}
+                className={`border-b border-slate-100 p-4 ${
+                  notification.isRead ? "bg-white" : "bg-slate-50"
+                }`}
+              >
+                <div className="flex gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-bold text-slate-700">
+                    {notification.sender?.avatar ? (
+                      <img
+                        src={notification.sender.avatar}
+                        alt={notification.sender.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      notification.sender?.name?.charAt(0)?.toUpperCase() || "A"
+                    )}
+                  </div>
 
-                  return (
-                    <div
-                      key={notification._id}
-                      className={`mb-2 rounded-2xl border p-3 transition ${
-                        notification.isRead
-                          ? "border-slate-100 bg-white"
-                          : "border-slate-200 bg-slate-50"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-bold text-slate-700">
-                          {notification.sender?.avatar ? (
-                            <img
-                              src={notification.sender.avatar}
-                              alt={notification.sender.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            avatarText
-                          )}
-                        </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm leading-5 text-slate-700">
+                      {notification.message}
+                    </p>
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span>{getNotificationIcon(notification.type)}</span>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </p>
 
-                            <p className="truncate text-sm font-semibold text-slate-900">
-                              {notification.sender?.name || "System"}
-                            </p>
-
-                            {!notification.isRead ? (
-                              <span className="h-2 w-2 rounded-full bg-red-500" />
-                            ) : null}
-                          </div>
-
-                          <p className="mt-1 text-sm leading-5 text-slate-600">
-                            {notification.message}
-                          </p>
-
-                          <p className="mt-1 text-xs text-slate-400">
-                            {new Date(notification.createdAt).toLocaleString()}
-                          </p>
-
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {!notification.isRead ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleMarkAsRead(notification._id)
-                                }
-                                className="text-xs font-semibold text-slate-500 transition hover:text-slate-900"
-                              >
-                                Mark read
-                              </button>
-                            ) : null}
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleDeleteNotification(notification._id)
-                              }
-                              className="text-xs font-semibold text-red-500 transition hover:text-red-700"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              : null}
+                    {!notification.isRead ? (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkAsRead(notification._id)}
+                        className="mt-2 text-xs font-bold text-slate-700 hover:text-slate-900"
+                      >
+                        Mark as read
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="border-t border-slate-100 p-3">
             <Link to="/notifications" onClick={() => setIsOpen(false)}>
-              <Button className="w-full" variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full">
                 View All Notifications
               </Button>
             </Link>

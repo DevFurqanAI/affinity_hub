@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 
@@ -22,6 +22,7 @@ function ProfilePage({ isMePage = false }) {
   const navigate = useNavigate();
 
   const loggedInUser = useAuthStore((state) => state.user);
+  const loggedInUserId = loggedInUser?._id;
 
   const [profileUser, setProfileUser] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -46,88 +47,93 @@ function ProfilePage({ isMePage = false }) {
     Boolean(loggedInUser?._id && profileUser?._id) &&
     loggedInUser._id === profileUser._id;
 
-  const checkIfFollowing = async (targetUserId) => {
-    if (!loggedInUser?._id || !targetUserId || loggedInUser._id === targetUserId) {
-      setIsFollowing(false);
-      return;
-    }
+  const checkIfFollowing = useCallback(
+    async (targetUserId) => {
+      if (!loggedInUserId || !targetUserId || loggedInUserId === targetUserId) {
+        setIsFollowing(false);
+        return;
+      }
 
-    try {
-      const result = await followService.getFollowing(loggedInUser._id);
-      const followingList = result.data?.following || [];
+      try {
+        const result = await followService.getFollowing(loggedInUserId);
+        const followingList = result.data?.following || [];
 
-      setIsFollowing(followingList.some((user) => user._id === targetUserId));
-    } catch {
-      setIsFollowing(false);
-    }
-  };
+        setIsFollowing(followingList.some((user) => user._id === targetUserId));
+      } catch {
+        setIsFollowing(false);
+      }
+    },
+    [loggedInUserId]
+  );
 
-  const checkIfBlockedByMe = async (targetUserId) => {
-    if (!loggedInUser?._id || !targetUserId || loggedInUser._id === targetUserId) {
-      setIsBlockedByMe(false);
-      return;
-    }
+ const checkIfBlockedByMe = useCallback(
+    async (targetUserId) => {
+      if (!loggedInUserId || !targetUserId || loggedInUserId === targetUserId) {
+        setIsBlockedByMe(false);
+        return;
+      }
 
-    try {
-      const result = await blockService.getBlockedUsers();
-      const blockedUsers = result.data?.blockedUsers || [];
+      try {
+        const result = await blockService.getBlockedUsers();
+        const blockedUsers = result.data?.blockedUsers || [];
 
-      setIsBlockedByMe(blockedUsers.some((user) => user._id === targetUserId));
-    } catch {
-      setIsBlockedByMe(false);
-    }
-  };
+        setIsBlockedByMe(blockedUsers.some((user) => user._id === targetUserId));
+      } catch {
+        setIsBlockedByMe(false);
+      }
+    },
+    [loggedInUserId]
+  );
 
-  const loadUserPosts = async (
-    profileUsername,
-    page = 1,
-    shouldReplace = true
-  ) => {
-    if (!profileUsername) {
-      return;
-    }
+  const loadUserPosts = useCallback(
+    async (profileUsername, page = 1, shouldReplace = true) => {
+      if (!profileUsername) {
+        return;
+      }
 
-    try {
-      setIsPostsLoading(true);
+      try {
+        setIsPostsLoading(true);
 
-      const result = await postService.getUserPosts(
-        profileUsername,
-        page,
-        PAGE_LIMIT
-      );
+        const result = await postService.getUserPosts(
+          profileUsername,
+          page,
+          PAGE_LIMIT
+        );
 
-      const newPosts = result.data?.posts || [];
-      const newPagination = result.data?.pagination || {
-        page,
-        limit: PAGE_LIMIT,
-        totalPages: 1,
-        totalPosts: newPosts.length
-      };
+        const newPosts = result.data?.posts || [];
+        const newPagination = result.data?.pagination || {
+          page,
+          limit: PAGE_LIMIT,
+          totalPages: 1,
+          totalPosts: newPosts.length
+        };
 
-      setPosts((previousPosts) =>
-        shouldReplace ? newPosts : [...previousPosts, ...newPosts]
-      );
+        setPosts((previousPosts) =>
+          shouldReplace ? newPosts : [...previousPosts, ...newPosts]
+        );
 
-      setPagination(newPagination);
-    } catch (error) {
-      const message =
-        error.response?.data?.message || "Failed to load profile posts";
+        setPagination(newPagination);
+      } catch (error) {
+        const message =
+          error.response?.data?.message || "Failed to load profile posts";
 
-      toast.error(message);
+        toast.error(message);
 
-      setPosts([]);
-      setPagination({
-        page: 1,
-        limit: PAGE_LIMIT,
-        totalPages: 1,
-        totalPosts: 0
-      });
-    } finally {
-      setIsPostsLoading(false);
-    }
-  };
-
-  const loadProfile = async () => {
+        setPosts([]);
+        setPagination({
+          page: 1,
+          limit: PAGE_LIMIT,
+          totalPages: 1,
+          totalPosts: 0
+        });
+      } finally {
+        setIsPostsLoading(false);
+      }
+    },
+    []
+  );
+  
+  const loadProfile = useCallback(async () => {
     try {
       setIsPageLoading(true);
 
@@ -141,7 +147,6 @@ function ProfilePage({ isMePage = false }) {
 
       await checkIfFollowing(user?._id);
       await checkIfBlockedByMe(user?._id);
-
       await loadUserPosts(user?.username, 1, true);
     } catch (error) {
       const message =
@@ -153,11 +158,17 @@ function ProfilePage({ isMePage = false }) {
     } finally {
       setIsPageLoading(false);
     }
-  };
+  }, [
+    isMePage,
+    username,
+    checkIfFollowing,
+    checkIfBlockedByMe,
+    loadUserPosts
+  ]);
 
   useEffect(() => {
     loadProfile();
-  }, [username, isMePage, loggedInUser?._id]);
+  }, [loadProfile]);
 
   const handleFollowChange = ({ isFollowing: newFollowingState, followersCount }) => {
     setIsFollowing(newFollowingState);

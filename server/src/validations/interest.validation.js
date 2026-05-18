@@ -5,8 +5,8 @@ export const setUserInterestsValidationSchema = {
   body: z.object({
     interestIds: z
       .array(mongoIdSchema)
-      .min(1, "Please select at least one interest")
-      .max(20, "You can select maximum 20 interests")
+      .min(3, "Please select at least 3 interests")
+      .max(10, "You can select up to 10 interests")
   })
 };
 
@@ -18,27 +18,7 @@ export const setPostInterestsValidationSchema = {
   body: z.object({
     interestIds: z
       .array(mongoIdSchema)
-      .min(1, "Please select at least one interest")
-      .max(10, "A post can have maximum 10 interests")
-  })
-};
-
-export const recommendationQueryValidationSchema = {
-  query: z.object({
-    page: z
-      .string()
-      .optional()
-      .transform((value) => (value ? Number(value) : 1))
-      .refine((value) => Number.isInteger(value) && value > 0, {
-        message: "Page must be a positive number"
-      }),
-
-    limit: z
-      .string()
-      .optional()
-      .transform((value) => (value ? Number(value) : 10))
-      .refine((value) => Number.isInteger(value) && value > 0 && value <= 50, {
-        message: "Limit must be between 1 and 50"
-      })
+      .min(1, "Please select at least 1 interest")
+      .max(10, "You can select up to 10 interests")
   })
 };

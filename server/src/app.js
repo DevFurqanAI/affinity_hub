@@ -6,10 +6,8 @@ import helmet from "helmet";
 
 import env from "./config/env.js";
 import ApiResponse from "./utils/ApiResponse.js";
-import validate from "./middlewares/validate.middleware.js";
 import notFoundMiddleware from "./middlewares/notFound.middleware.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
-import { testValidationSchema } from "./validations/common.validation.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import followRoutes from "./routes/follow.routes.js";
@@ -54,24 +52,6 @@ app.get("/api/health", (req, res) => {
     )
   );
 });
-
-app.post(
-  "/api/test-validation/:id",
-  validate(testValidationSchema),
-  (req, res) => {
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          params: req.params,
-          query: req.query,
-          body: req.body
-        },
-        "Validation passed successfully"
-      )
-    );
-  }
-);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);

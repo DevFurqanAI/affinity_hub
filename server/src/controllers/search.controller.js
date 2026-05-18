@@ -1,8 +1,8 @@
 import User from "../models/User.model.js";
 import Post from "../models/Post.model.js";
-import Block from "../models/Block.model.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { getBlockedUserIdsForViewer } from "../utils/block.helpers.js";
 
 const authorPopulate = {
   path: "author",
@@ -32,7 +32,7 @@ const cleanPostAuthorStatus = (posts) => {
   return posts.map((post) => {
     const postObject = post.toObject();
 
-    if (postObject.author) {
+    if (postObject.author?.status) {
       delete postObject.author.status;
     }
 
@@ -40,30 +40,6 @@ const cleanPostAuthorStatus = (posts) => {
   });
 };
 
-const getBlockedUserIdsForCurrentUser = async (userId) => {
-  const blocks = await Block.find({
-    $or: [
-      {
-        blocker: userId
-      },
-      {
-        blocked: userId
-      }
-    ]
-  }).select("blocker blocked");
-
-  return blocks.map((block) =>
-    block.blocker.toString() === userId.toString()
-      ? block.blocked
-      : block.blocker
-  );
-};
-
-/*
-|--------------------------------------------------------------------------
-| GET /api/search/users?q=
-|--------------------------------------------------------------------------
-*/
 export const searchUsers = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationValues(req);
   const q = getSearchQuery(req);
@@ -86,7 +62,7 @@ export const searchUsers = asyncHandler(async (req, res) => {
     );
   }
 
-  const blockedUserIds = await getBlockedUserIdsForCurrentUser(req.user._id);
+  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
 
   const query = {
     _id: {
@@ -138,11 +114,6 @@ export const searchUsers = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/search/posts?q=
-|--------------------------------------------------------------------------
-*/
 export const searchPosts = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationValues(req);
   const q = getSearchQuery(req);
@@ -165,7 +136,7 @@ export const searchPosts = asyncHandler(async (req, res) => {
     );
   }
 
-  const blockedUserIds = await getBlockedUserIdsForCurrentUser(req.user._id);
+  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
 
   const activeUsers = await User.find({
     _id: {

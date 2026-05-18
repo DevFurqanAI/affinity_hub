@@ -6,11 +6,6 @@ import env from "../config/env.js";
 import ApiError from "../utils/ApiError.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
-/*
-|--------------------------------------------------------------------------
-| Get Token From Header
-|--------------------------------------------------------------------------
-*/
 const getTokenFromRequest = (req) => {
   const authHeader = req.headers.authorization || "";
 
@@ -21,12 +16,6 @@ const getTokenFromRequest = (req) => {
   return null;
 };
 
-/*
-|--------------------------------------------------------------------------
-| Check Active Ban
-|--------------------------------------------------------------------------
-| If ban expired, this automatically deactivates it and restores user status.
-*/
 const checkUserBanStatus = async (user) => {
   const activeBan = await Ban.findOne({
     user: user._id,
@@ -59,14 +48,7 @@ const checkUserBanStatus = async (user) => {
   };
 };
 
-/*
-|--------------------------------------------------------------------------
-| Verify JWT
-|--------------------------------------------------------------------------
-| Normal protected API middleware.
-| Blocks banned/suspended users.
-*/
-export const verifyJWT = asyncHandler(async (req, res, next) => {
+const getUserFromAccessToken = async (req) => {
   const token = getTokenFromRequest(req);
 
   if (!token) {
@@ -88,6 +70,72 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
   if (!user) {
     throw new ApiError(401, "User not found");
   }
+
+  return user;
+};
+
+const isLocalUnverifiedUser = (user) => {
+  return user.authProvider === "local" && user.isVerified === false;
+};
+
+/*
+|--------------------------------------------------------------------------
+| Normal Protected API Middleware
+|--------------------------------------------------------------------------
+| Blocks:
+| - banned users
+| - suspended users
+| - local unverified users
+|
+| Does NOT block:
+| - profileSetupCompleted === false
+| - interestsSetupCompleted === false
+|
+| Onboarding redirects are handled by frontend route guards.
+*/
+export const verifyJWT = asyncHandler(async (req, res, next) => {
+  const user = await getUserFromAccessToken(req);
+
+  const banStatus = await checkUserBanStatus(user);
+
+  if (banStatus.isBanned || user.status === "banned") {
+    throw new ApiError(
+      403,
+      "Your account is banned. You cannot access this resource."
+    );
+  }
+
+  if (user.status === "suspended") {
+    throw new ApiError(
+      403,
+      "Your account is suspended. You cannot access this resource."
+    );
+  }
+
+  if (isLocalUnverifiedUser(user)) {
+    throw new ApiError(
+      403,
+      "Please verify your email before accessing this resource."
+    );
+  }
+
+  req.user = user;
+  next();
+});
+
+/*
+|--------------------------------------------------------------------------
+| Unverified-Allowed Middleware
+|--------------------------------------------------------------------------
+| Allows:
+| - local unverified users
+|
+| Blocks:
+| - banned users
+| - suspended users
+*/
+export const verifyJWTAllowUnverified = asyncHandler(async (req, res, next) => {
+  const user = await getUserFromAccessToken(req);
 
   const banStatus = await checkUserBanStatus(user);
 
@@ -111,32 +159,16 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 
 /*
 |--------------------------------------------------------------------------
-| Verify JWT Allow Banned
+| Banned-Allowed Middleware
 |--------------------------------------------------------------------------
-| Used only for routes banned users must access, such as submitting appeal.
+| Allows:
+| - banned users, for appeal route only
+|
+| Blocks:
+| - suspended users
 */
 export const verifyJWTAllowBanned = asyncHandler(async (req, res, next) => {
-  const token = getTokenFromRequest(req);
-
-  if (!token) {
-    throw new ApiError(401, "Access token is required");
-  }
-
-  let decodedToken;
-
-  try {
-    decodedToken = jwt.verify(token, env.jwtAccessSecret);
-  } catch {
-    throw new ApiError(401, "Invalid or expired access token");
-  }
-
-  const user = await User.findById(decodedToken.userId).select(
-    "-password -refreshToken"
-  );
-
-  if (!user) {
-    throw new ApiError(401, "User not found");
-  }
+  const user = await getUserFromAccessToken(req);
 
   if (user.status === "suspended") {
     throw new ApiError(

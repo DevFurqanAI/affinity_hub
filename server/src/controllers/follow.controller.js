@@ -6,6 +6,10 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import createNotification from "../utils/createNotification.js";
+import {
+  getBlockedUserIdsForViewer,
+  hasBlockRelation
+} from "../utils/block.helpers.js";
 
 const safeUserSelect =
   "name username bio avatar role status isVerified followersCount followingCount createdAt updatedAt";
@@ -14,57 +18,6 @@ const isValidMongoId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
 
-const getBlockedUserIdsForCurrentUser = async (userId) => {
-  const blocks = await Block.find({
-    $or: [
-      {
-        blocker: userId
-      },
-      {
-        blocked: userId
-      }
-    ]
-  }).select("blocker blocked");
-
-  return blocks.map((block) =>
-    block.blocker.toString() === userId.toString()
-      ? block.blocked
-      : block.blocker
-  );
-};
-
-const checkBlockBetweenUsers = async (userA, userB) => {
-  return await Block.findOne({
-    $or: [
-      {
-        blocker: userA,
-        blocked: userB
-      },
-      {
-        blocker: userB,
-        blocked: userA
-      }
-    ]
-  });
-};
-
-const isUserFollowingAuthor = async (userId, authorId) => {
-  const user = await User.findById(userId).select("following");
-
-  if (!user) {
-    return false;
-  }
-
-  return user.following.some(
-    (followingId) => followingId.toString() === authorId.toString()
-  );
-};
-
-/*
-|--------------------------------------------------------------------------
-| POST /api/follows/:userId/follow
-|--------------------------------------------------------------------------
-*/
 export const followUser = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const currentUserId = req.user._id;
@@ -77,9 +30,9 @@ export const followUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "You cannot follow yourself");
   }
 
-  const blockedRelation = await checkBlockBetweenUsers(currentUserId, userId);
+  const isBlocked = await hasBlockRelation(currentUserId, userId);
 
-  if (blockedRelation) {
+  if (isBlocked) {
     throw new ApiError(403, "You cannot follow this user");
   }
 
@@ -137,11 +90,6 @@ export const followUser = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| DELETE /api/follows/:userId/unfollow
-|--------------------------------------------------------------------------
-*/
 export const unfollowUser = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const currentUserId = req.user._id;
@@ -201,11 +149,6 @@ export const unfollowUser = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/follows/suggestions
-|--------------------------------------------------------------------------
-*/
 export const getFollowSuggestions = asyncHandler(async (req, res) => {
   const currentUser = await User.findById(req.user._id).select("following");
 
@@ -213,7 +156,7 @@ export const getFollowSuggestions = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Current user not found");
   }
 
-  const blockedUserIds = await getBlockedUserIdsForCurrentUser(req.user._id);
+  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
 
   const excludedUserIds = [
     req.user._id,
@@ -234,17 +177,14 @@ export const getFollowSuggestions = asyncHandler(async (req, res) => {
   return res.status(200).json(
     new ApiResponse(
       200,
-      { suggestions },
+      {
+        suggestions
+      },
       "Follow suggestions fetched successfully"
     )
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/follows/:userId/followers
-|--------------------------------------------------------------------------
-*/
 export const getUserFollowers = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
@@ -252,14 +192,15 @@ export const getUserFollowers = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid user id");
   }
 
-  const blockedUserIds = await getBlockedUserIdsForCurrentUser(req.user._id);
+  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
 
   const user = await User.findById(userId).populate({
     path: "followers",
     match: {
       _id: {
         $nin: blockedUserIds
-      }
+      },
+      status: "active"
     },
     select: safeUserSelect
   });
@@ -280,11 +221,6 @@ export const getUserFollowers = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/follows/:userId/following
-|--------------------------------------------------------------------------
-*/
 export const getUserFollowing = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
@@ -292,14 +228,15 @@ export const getUserFollowing = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid user id");
   }
 
-  const blockedUserIds = await getBlockedUserIdsForCurrentUser(req.user._id);
+  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
 
   const user = await User.findById(userId).populate({
     path: "following",
     match: {
       _id: {
         $nin: blockedUserIds
-      }
+      },
+      status: "active"
     },
     select: safeUserSelect
   });

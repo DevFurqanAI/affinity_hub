@@ -23,36 +23,6 @@ import {
 
 const router = Router();
 
-router.post(
-  "/:userId",
-  verifyJWT,
-  verifyAdmin,
-  validate(banUserValidationSchema),
-  banUser
-);
-
-router.patch(
-  "/:banId/remove",
-  verifyJWT,
-  verifyAdmin,
-  validate(removeBanValidationSchema),
-  removeBan
-);
-
-/*
-|--------------------------------------------------------------------------
-| Appeal Route
-|--------------------------------------------------------------------------
-| Banned users must still be able to submit appeal.
-| So this route uses verifyJWTAllowBanned instead of verifyJWT.
-*/
-router.post(
-  "/:banId/appeal",
-  verifyJWTAllowBanned,
-  validate(submitAppealValidationSchema),
-  submitAppeal
-);
-
 router.get(
   "/appeals",
   verifyJWT,
@@ -67,6 +37,29 @@ router.patch(
   verifyAdmin,
   validate(reviewAppealValidationSchema),
   reviewAppeal
+);
+
+router.post(
+  "/:banId/appeal",
+  verifyJWTAllowBanned,
+  validate(submitAppealValidationSchema),
+  submitAppeal
+);
+
+router.post(
+  "/:userId",
+  verifyJWT,
+  verifyAdmin,
+  validate(banUserValidationSchema),
+  banUser
+);
+
+router.patch(
+  "/:banId/remove",
+  verifyJWT,
+  verifyAdmin,
+  validate(removeBanValidationSchema),
+  removeBan
 );
 
 export default router;

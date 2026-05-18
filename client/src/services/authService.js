@@ -1,13 +1,21 @@
 import api from "./api.js";
 
 const authService = {
-  register: async (userData) => {
-    const response = await api.post("/auth/register", userData);
+  register: async (data) => {
+    const response = await api.post("/auth/register", data);
     return response.data;
   },
 
-  login: async (credentials) => {
-    const response = await api.post("/auth/login", credentials);
+  login: async (data) => {
+    const response = await api.post("/auth/login", data);
+    return response.data;
+  },
+
+  googleAuth: async (credential) => {
+    const response = await api.post("/auth/google", {
+      credential
+    });
+
     return response.data;
   },
 
@@ -23,6 +31,19 @@ const authService = {
 
   refreshToken: async () => {
     const response = await api.post("/auth/refresh");
+    return response.data;
+  },
+
+  verifyEmail: async (otp) => {
+    const response = await api.post("/auth/verify-email", {
+      otp
+    });
+
+    return response.data;
+  },
+
+  resendVerificationOtp: async () => {
+    const response = await api.post("/auth/resend-verification-otp", {});
     return response.data;
   }
 };
