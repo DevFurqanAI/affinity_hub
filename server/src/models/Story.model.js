@@ -32,6 +32,11 @@ const storySchema = new mongoose.Schema(
       default: ""
     },
 
+    isDeleted: {
+      type: Boolean,
+      default: false
+    },
+
     expiresAt: {
       type: Date,
       required: true,
@@ -47,8 +52,7 @@ const storySchema = new mongoose.Schema(
 |--------------------------------------------------------------------------
 | TTL Index
 |--------------------------------------------------------------------------
-| MongoDB will automatically delete the story document after expiresAt.
-| expireAfterSeconds: 0 means delete when expiresAt time is reached.
+| MongoDB automatically deletes the story document after expiry.
 */
 storySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 

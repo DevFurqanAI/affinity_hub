@@ -1,160 +1,117 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Palette } from "lucide-react";
 
-import Button from "../common/Button.jsx";
-import SearchBar from "../search/SearchBar.jsx";
-import NotificationDropdown from "../notifications/NotificationDropdown.jsx";
+import AffinityHubLogo from "../branding/AffinityHubLogo.jsx";
+import useTheme from "../../hooks/useTheme.js";
 import useAuthStore from "../../store/authStore.js";
 
-const navLinks = [
-  {
-    label: "Home",
-    path: "/home"
-  },
-  {
-    label: "Explore",
-    path: "/explore"
-  },
-  {
-    label: "Profile",
-    path: "/me"
-  }
+const mobileLinks = [
+  { label: "Home", path: "/home" },
+  { label: "Search", path: "/search" },
+  { label: "Explore", path: "/explore" },
+  { label: "Alerts", path: "/notifications" },
+  { label: "Me", path: "/me" }
 ];
 
 function Navbar() {
   const navigate = useNavigate();
 
-  const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const logout = useAuthStore((state) => state.logout);
+
+  const { theme, setTheme } = useTheme();
 
   const handleLogout = async () => {
     await logout();
     navigate("/login", { replace: true });
   };
 
+  const handleSwitchAppearance = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <nav className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex items-center justify-between gap-4">
+    <>
+      {/* Mobile Top Navbar */}
+      <header className="fixed left-0 right-0 top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface)] lg:hidden">
+        <div className="flex h-16 items-center justify-between px-4">
           <Link
             to={isAuthenticated ? "/home" : "/"}
-            className="flex min-w-fit items-center gap-2"
+            aria-label="Affinity Hub Home"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-lg font-bold text-white shadow-sm">
-              AH
-            </div>
-
-            <div>
-              <p className="text-lg font-bold leading-none text-slate-900">
-                Affinity Hub
-              </p>
-              <p className="hidden text-xs text-slate-500 sm:block">
-                Connect. Share. Grow.
-              </p>
-            </div>
+            <AffinityHubLogo compact />
           </Link>
 
-          {isAuthenticated ? (
-            <div className="flex items-center gap-2 xl:hidden">
-              <NotificationDropdown />
-            </div>
-          ) : null}
-        </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSwitchAppearance}
+              aria-label="Switch appearance"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-amber-500 transition hover:bg-[var(--color-surface-elevated)]"
+            >
+              <Palette className="h-4 w-4" />
+            </button>
 
-        {isAuthenticated ? (
-          <div className="w-full xl:max-w-sm">
-            <SearchBar compact placeholder="Search..." />
-          </div>
-        ) : null}
-
-        <div className="flex flex-wrap items-center justify-between gap-3 xl:justify-end">
-          {isAuthenticated ? (
-            <div className="hidden items-center gap-2 lg:flex">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.label}
-                  to={link.path}
-                  className={({ isActive }) =>
-                    `rounded-full px-4 py-2 text-sm font-semibold transition ${
-                      isActive
-                        ? "bg-slate-900 text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    }`
-                  }
-                >
-                  {link.label}
-                </NavLink>
-              ))}
-
-              {user?.role === "admin" ? (
-                <NavLink
-                  to="/admin"
-                  className={({ isActive }) =>
-                    `rounded-full px-4 py-2 text-sm font-semibold transition ${
-                      isActive
-                        ? "bg-slate-900 text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    }`
-                  }
-                >
-                  Admin
-                </NavLink>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <>
-                <div className="hidden xl:block">
-                  <NotificationDropdown />
-                </div>
-
-                <Link
-                  to="/me"
-                  className="hidden items-center gap-2 rounded-full px-2 py-1 transition hover:bg-slate-100 sm:flex"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-bold text-slate-700">
-                    {user?.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      user?.name?.charAt(0)?.toUpperCase() || "A"
-                    )}
-                  </div>
-
-                  <div className="hidden text-right md:block">
-                    <p className="text-sm font-semibold text-slate-900">
-                      @{user?.username}
-                    </p>
-                    <p className="text-xs text-slate-500">View profile</p>
-                  </div>
-                </Link>
-
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  Logout
-                </Button>
-              </>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest text-rose-500"
+              >
+                Log out
+              </button>
             ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="outline" size="sm">
-                    Login
-                  </Button>
-                </Link>
-
-                <Link to="/register">
-                  <Button size="sm">Register</Button>
-                </Link>
-              </>
+              <Link
+                to="/login"
+                className="rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest text-rose-500"
+              >
+                Login
+              </Link>
             )}
           </div>
         </div>
-      </nav>
-    </header>
+      </header>
+
+      {/* Desktop UiLab-style Header */}
+      {isAuthenticated ? (
+        <header className="fixed left-[72px] right-0 top-0 z-20 hidden h-20 items-center border-b border-[var(--color-border)] bg-[var(--color-surface)]/90 backdrop-blur-md lg:flex">
+          <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-6">
+            <Link to="/home" className="group"> 
+
+              <h1 className="mt-2 flex items-center gap-2 text-base font-black tracking-tight text-[var(--color-text)]">
+                <span>Affinity Central Timeline</span>
+
+                <span
+                  className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-sm"
+                  title="Online"
+                />
+              </h1>
+            </Link>
+          </div>
+        </header>
+      ) : null}
+
+      {/* Mobile Bottom Navigation */}
+      {isAuthenticated ? (
+        <nav className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2 lg:hidden">
+          {mobileLinks.map((link) => (
+            <NavLink
+              key={link.path}
+              to={link.path}
+              className={({ isActive }) =>
+                `rounded-xl px-2 py-2 text-center text-[10px] font-black uppercase tracking-tight transition ${
+                  isActive
+                    ? "text-rose-500"
+                    : "text-[var(--color-text-muted)]"
+                }`
+              }
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
+      ) : null}
+    </>
   );
 }
 

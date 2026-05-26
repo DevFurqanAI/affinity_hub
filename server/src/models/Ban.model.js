@@ -30,6 +30,40 @@ const banSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       default: null
+    },
+
+    /*
+    |--------------------------------------------------------------------------
+    | Status Restoration Safety
+    |--------------------------------------------------------------------------
+    | Preserves the user's status before the ban.
+    | Example:
+    | - active       -> banned -> active
+    | - deactivated  -> banned -> deactivated
+    | - suspended    -> banned -> suspended
+    |--------------------------------------------------------------------------
+    */
+    previousStatus: {
+      type: String,
+      enum: ["active", "suspended", "deactivated"],
+      default: "active"
+    },
+
+    endType: {
+      type: String,
+      enum: ["removed", "expired", "appeal_accepted"],
+      default: null
+    },
+
+    endedAt: {
+      type: Date,
+      default: null
+    },
+
+    endedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null
     }
   },
   {

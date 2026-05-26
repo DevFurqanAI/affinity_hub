@@ -1,8 +1,9 @@
-import Button from "../common/Button.jsx";
 import FollowButton from "./FollowButton.jsx";
+import StoryAvatar from "../stories/StoryAvatar.jsx";
 
 function ProfileHeader({
   user,
+  postsCount = 0,
   isOwnProfile,
   isFollowing,
   isBlockedByMe,
@@ -13,106 +14,120 @@ function ProfileHeader({
   onFollowersClick,
   onFollowingClick
 }) {
-  const avatarText = user?.name?.charAt(0)?.toUpperCase() || "A";
+  const secondaryButtonClasses =
+    "rounded-md border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-2 text-[10px] font-extrabold uppercase tracking-wide text-[var(--color-text)] transition hover:bg-[var(--color-surface-elevated)] active:scale-95";
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="h-32 bg-linear-to-r from-slate-900 via-slate-800 to-slate-600" />
+    <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-7 sm:px-8">
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-9">
+        {/* Profile Story Avatar */}
+        <StoryAvatar
+          user={user}
+          sizeClassName="h-24 w-24 sm:h-28 sm:w-28"
+          textClassName="text-3xl"
+        />
 
-      <div className="px-5 pb-6 sm:px-8">
-        <div className="-mt-14 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl border-4 border-white bg-slate-200 text-4xl font-bold text-slate-700 shadow-sm">
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                avatarText
-              )}
+        {/* Identity Content */}
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-start">
+            <h1 className="truncate font-mono text-base font-black tracking-tight text-[var(--color-text)]">
+              {user?.username}
+            </h1>
+
+            {isOwnProfile ? (
+              <button
+                type="button"
+                onClick={onEditClick}
+                className={secondaryButtonClasses}
+              >
+                Edit Profile
+              </button>
+            ) : (
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                {!isBlockedByMe ? (
+                  <FollowButton
+                    userId={user?._id}
+                    isFollowing={isFollowing}
+                    onFollowChange={onFollowChange}
+                    size="sm"
+                  />
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={onBlockToggle}
+                  disabled={isBlockLoading}
+                  className={`rounded-md border px-4 py-2 text-[10px] font-extrabold uppercase tracking-wide transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isBlockedByMe
+                      ? "border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)]"
+                      : "border-rose-500/25 bg-rose-500/10 text-rose-500 hover:bg-rose-500/15"
+                  }`}
+                >
+                  {isBlockLoading
+                    ? "Please wait..."
+                    : isBlockedByMe
+                      ? "Unblock"
+                      : "Block"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Statistics */}
+          <div className="mt-5 flex items-center justify-center gap-7 text-xs text-[var(--color-text-muted)] sm:justify-start">
+            <div>
+              <span className="mr-1 font-extrabold text-[var(--color-text)]">
+                {postsCount}
+              </span>
+              posts
             </div>
 
-            <div className="pb-1">
-              <h1 className="text-2xl font-bold text-slate-900">
-                {user?.name}
-              </h1>
+            <button
+              type="button"
+              onClick={onFollowersClick}
+              className="transition hover:text-rose-500"
+            >
+              <span className="mr-1 font-extrabold text-[var(--color-text)]">
+                {user?.followersCount ?? 0}
+              </span>
+              followers
+            </button>
 
-              <p className="mt-1 text-sm font-medium text-slate-500">
-                @{user?.username}
+            <button
+              type="button"
+              onClick={onFollowingClick}
+              className="transition hover:text-rose-500"
+            >
+              <span className="mr-1 font-extrabold text-[var(--color-text)]">
+                {user?.followingCount ?? 0}
+              </span>
+              following
+            </button>
+          </div>
+
+          {/* Name and Bio */}
+          <div className="mt-5">
+            <p className="text-xs font-extrabold text-rose-500">
+              {user?.name}
+            </p>
+
+            <p className="mt-1 max-w-md text-xs font-medium leading-relaxed text-[var(--color-text-muted)]">
+              {user?.bio || "No bio added yet."}
+            </p>
+          </div>
+
+          {/* Blocked Notice */}
+          {isBlockedByMe ? (
+            <div className="mt-5 max-w-xl rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-left">
+              <p className="text-[10px] font-extrabold uppercase tracking-wide text-rose-500">
+                User Blocked
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-rose-500/90">
+                Their posts are hidden while this user remains blocked.
               </p>
             </div>
-          </div>
-
-          {isOwnProfile ? (
-            <Button onClick={onEditClick} variant="outline">
-              Edit Profile
-            </Button>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              {!isBlockedByMe ? (
-                <FollowButton
-                  userId={user?._id}
-                  isFollowing={isFollowing}
-                  onFollowChange={onFollowChange}
-                />
-              ) : null}
-
-              <Button
-                type="button"
-                variant={isBlockedByMe ? "outline" : "danger"}
-                onClick={onBlockToggle}
-                disabled={isBlockLoading}
-              >
-                {isBlockLoading
-                  ? "Please wait..."
-                  : isBlockedByMe
-                    ? "Unblock"
-                    : "Block"}
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {isBlockedByMe ? (
-          <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm font-semibold text-red-700">
-              You blocked this user.
-            </p>
-            <p className="mt-1 text-xs text-red-600">
-              Their posts will not appear in your feed, search, suggestions, or
-              recommendations where filtering is applied.
-            </p>
-          </div>
-        ) : null}
-
-        <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-600">
-          {user?.bio || "No bio added yet."}
-        </p>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:max-w-sm">
-          <button
-            type="button"
-            onClick={onFollowersClick}
-            className="rounded-2xl bg-slate-50 p-4 text-center transition hover:bg-slate-100"
-          >
-            <p className="text-xl font-bold text-slate-900">
-              {user?.followersCount || 0}
-            </p>
-            <p className="text-sm text-slate-500">Followers</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={onFollowingClick}
-            className="rounded-2xl bg-slate-50 p-4 text-center transition hover:bg-slate-100"
-          >
-            <p className="text-xl font-bold text-slate-900">
-              {user?.followingCount || 0}
-            </p>
-            <p className="text-sm text-slate-500">Following</p>
-          </button>
+          ) : null}
         </div>
       </div>
     </section>

@@ -21,6 +21,7 @@ import interestRoutes from "./routes/interest.routes.js";
 import reportRoutes from "./routes/report.routes.js";
 import banRoutes from "./routes/ban.routes.js";
 import blockRoutes from "./routes/block.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use("/api/interests", interestRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/bans", banRoutes);
 app.use("/api/blocks", blockRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);

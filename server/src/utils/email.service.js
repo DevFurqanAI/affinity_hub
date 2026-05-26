@@ -6,20 +6,6 @@ const hasSmtpConfig = () => {
   return Boolean(env.smtpHost && env.smtpUser && env.smtpPass);
 };
 
-const logOtpToTerminal = ({ to, name, otp }) => {
-  const expiryText = `${env.otpExpiresMinutes} minutes`;
-
-  console.log("");
-  console.log("========================================");
-  console.log("Affinity Hub Email Verification OTP");
-  console.log(`To: ${to}`);
-  console.log(`Name: ${name}`);
-  console.log(`OTP: ${otp}`);
-  console.log(`Expires in: ${expiryText}`);
-  console.log("========================================");
-  console.log("");
-};
-
 const createTransporter = () => {
   return nodemailer.createTransport({
     host: env.smtpHost,
@@ -32,22 +18,51 @@ const createTransporter = () => {
   });
 };
 
-export const sendVerificationOtpEmail = async ({ to, name, otp }) => {
+const logOtpToTerminal = ({ to, name, otp, purpose }) => {
+  const expiryText = `${env.otpExpiresMinutes} minutes`;
+
+  console.log("");
+  console.log("========================================");
+  console.log(`Affinity Hub ${purpose}`);
+  console.log(`To: ${to}`);
+  console.log(`Name: ${name}`);
+  console.log(`OTP: ${otp}`);
+  console.log(`Expires in: ${expiryText}`);
+  console.log("========================================");
+  console.log("");
+};
+
+const sendOtpEmail = async ({
+  to,
+  name,
+  otp,
+  subject,
+  heading,
+  instruction,
+  ignoreMessage,
+  terminalPurpose
+}) => {
   const expiryText = `${env.otpExpiresMinutes} minutes`;
 
   /*
   |--------------------------------------------------------------------------
   | Local Development Fallback
   |--------------------------------------------------------------------------
-  | If SMTP is missing in development, do not break registration.
-  | Just print the OTP in terminal.
+  | If SMTP is missing in development, print OTP in the terminal.
+  |--------------------------------------------------------------------------
   */
   if (!hasSmtpConfig()) {
     if (env.nodeEnv === "production") {
       throw new Error("SMTP configuration is missing in production");
     }
 
-    logOtpToTerminal({ to, name, otp });
+    logOtpToTerminal({
+      to,
+      name,
+      otp,
+      purpose: terminalPurpose
+    });
+
     return;
   }
 
@@ -57,16 +72,16 @@ export const sendVerificationOtpEmail = async ({ to, name, otp }) => {
     await transporter.sendMail({
       from: env.smtpFrom,
       to,
-      subject: "Verify your Affinity Hub account",
-      text: `Hello ${name}, your Affinity Hub verification OTP is ${otp}. It expires in ${expiryText}.`,
+      subject,
+      text: `Hello ${name}, your Affinity Hub OTP is ${otp}. It expires in ${expiryText}. ${ignoreMessage}`,
       html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Verify your Affinity Hub account</h2>
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #18181b;">
+          <h2>${heading}</h2>
           <p>Hello ${name},</p>
-          <p>Your email verification OTP is:</p>
+          <p>${instruction}</p>
           <h1 style="letter-spacing: 4px;">${otp}</h1>
           <p>This OTP expires in ${expiryText}.</p>
-          <p>If you did not create an account, you can ignore this email.</p>
+          <p>${ignoreMessage}</p>
         </div>
       `
     });
@@ -75,8 +90,8 @@ export const sendVerificationOtpEmail = async ({ to, name, otp }) => {
     |--------------------------------------------------------------------------
     | Development Safety
     |--------------------------------------------------------------------------
-    | Bad SMTP credentials should not crash local registration.
-    | For production, still throw the real error.
+    | Bad SMTP credentials should not block local development.
+    |--------------------------------------------------------------------------
     */
     if (env.nodeEnv === "production") {
       throw error;
@@ -85,6 +100,38 @@ export const sendVerificationOtpEmail = async ({ to, name, otp }) => {
     console.warn("SMTP email sending failed in development.");
     console.warn(error.message);
 
-    logOtpToTerminal({ to, name, otp });
+    logOtpToTerminal({
+      to,
+      name,
+      otp,
+      purpose: terminalPurpose
+    });
   }
+};
+
+export const sendVerificationOtpEmail = async ({ to, name, otp }) => {
+  return sendOtpEmail({
+    to,
+    name,
+    otp,
+    subject: "Verify your Affinity Hub account",
+    heading: "Verify your Affinity Hub account",
+    instruction: "Your email verification OTP is:",
+    ignoreMessage: "If you did not create an account, you can ignore this email.",
+    terminalPurpose: "Email Verification OTP"
+  });
+};
+
+export const sendPasswordResetOtpEmail = async ({ to, name, otp }) => {
+  return sendOtpEmail({
+    to,
+    name,
+    otp,
+    subject: "Reset your Affinity Hub password",
+    heading: "Reset your Affinity Hub password",
+    instruction: "Your password reset OTP is:",
+    ignoreMessage:
+      "If you did not request a password reset, you can ignore this email and your password will remain unchanged.",
+    terminalPurpose: "Password Reset OTP"
+  });
 };

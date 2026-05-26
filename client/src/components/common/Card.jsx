@@ -1,10 +1,15 @@
-function Card({ children, className = "", padding = "p-5 sm:p-6" }) {
+function Card({
+  children,
+  className = "",
+  padding = "p-5 sm:p-6",
+  as: Component = "section"
+}) {
   return (
-    <section
-      className={`rounded-3xl border border-slate-200 bg-white ${padding} shadow-sm ${className}`}
+    <Component
+      className={`ui-card overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] ${padding} ${className}`}
     >
       {children}
-    </section>
+    </Component>
   );
 }
 

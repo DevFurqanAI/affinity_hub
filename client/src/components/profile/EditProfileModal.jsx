@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import Button from "../common/Button.jsx";
 import Loader from "../common/Loader.jsx";
 
 function EditProfileModal({
@@ -12,13 +11,67 @@ function EditProfileModal({
   isLoading
 }) {
   const [formData, setFormData] = useState({
-    name: user?.name || "",
-    username: user?.username || "",
-    bio: user?.bio || ""
+    name: "",
+    username: "",
+    bio: ""
   });
 
   const [avatarFile, setAvatarFile] = useState(null);
-  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "");
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [temporaryPreviewUrl, setTemporaryPreviewUrl] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setFormData({
+      name: user?.name || "",
+      username: user?.username || "",
+      bio: user?.bio || ""
+    });
+
+    setAvatarFile(null);
+    setAvatarPreview(user?.avatar || "");
+    setTemporaryPreviewUrl("");
+  }, [
+    isOpen,
+    user?._id,
+    user?.name,
+    user?.username,
+    user?.bio,
+    user?.avatar
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (temporaryPreviewUrl) {
+        URL.revokeObjectURL(temporaryPreviewUrl);
+      }
+    };
+  }, [temporaryPreviewUrl]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && !isLoading) {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, isLoading, onClose]);
 
   if (!isOpen) {
     return null;
@@ -40,14 +93,21 @@ function EditProfileModal({
       return;
     }
 
+    const nextPreviewUrl = URL.createObjectURL(file);
+
     setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    setTemporaryPreviewUrl(nextPreviewUrl);
+    setAvatarPreview(nextPreviewUrl);
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const profileResult = await onProfileUpdate(formData);
+    const profileResult = await onProfileUpdate({
+      name: formData.name,
+      username: formData.username,
+      bio: formData.bio
+    });
 
     if (!profileResult) {
       return;
@@ -64,63 +124,103 @@ function EditProfileModal({
     onClose();
   };
 
+  const handleOverlayClose = () => {
+    if (!isLoading) {
+      onClose();
+    }
+  };
+
   const avatarText = formData.name?.charAt(0)?.toUpperCase() || "A";
 
+  const inputClasses =
+    "w-full rounded-lg border border-neutral-200 bg-[#fcfcfc] px-4 py-3 text-sm text-neutral-800 outline-none transition focus:border-rose-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200";
+
+  const labelClasses =
+    "mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 dark:text-zinc-500";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-xl">
-        <div className="flex items-start justify-between gap-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm"
+      onMouseDown={handleOverlayClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-profile-title"
+        onMouseDown={(event) => event.stopPropagation()}
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-neutral-200 bg-white shadow-2xl dark:border-zinc-900 dark:bg-zinc-950"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-neutral-200 px-6 py-5 dark:border-zinc-900">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Edit Profile</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Update your public profile information.
+            <h2
+              id="edit-profile-title"
+              className="text-lg font-black tracking-tight text-neutral-900 dark:text-white"
+            >
+              Edit Profile
+            </h2>
+
+            <p className="mt-1 text-[11px] text-neutral-500 dark:text-zinc-500">
+              Manage your central identity information.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-full px-3 py-1 text-xl font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            onClick={handleOverlayClose}
+            disabled={isLoading}
+            aria-label="Close edit profile"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-xl text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50 dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-white"
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl bg-slate-200 text-4xl font-bold text-slate-700">
-              {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  alt="Avatar preview"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                avatarText
-              )}
+        <form onSubmit={handleSubmit} className="space-y-5 p-6">
+          {/* Avatar Row */}
+          <div className="flex items-center gap-4 border-b border-neutral-200 pb-5 dark:border-zinc-900">
+            <div className="shrink-0 rounded-full bg-gradient-to-tr from-[#fe3b6a] via-[#ff5a3b] to-[#ffaa3b] p-[2px]">
+              <div className="rounded-full bg-white p-[2px] dark:bg-zinc-950">
+                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-xl font-black text-neutral-700 dark:bg-zinc-900 dark:text-zinc-200">
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt="Avatar preview"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    avatarText
+                  )}
+                </div>
+              </div>
             </div>
 
-            <label className="cursor-pointer rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
-              Change Avatar
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-            </label>
+            <div className="min-w-0 text-left">
+              <p className="truncate text-sm font-black text-neutral-900 dark:text-white">
+                @{formData.username || "username"}
+              </p>
 
-            <p className="text-xs text-slate-400">
-              JPG, PNG, or WEBP. Max 2MB.
-            </p>
+              <label className="mt-1 inline-block cursor-pointer text-[11px] font-bold text-[#0095f6] transition hover:text-[#006db5]">
+                Change profile photo
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleAvatarChange}
+                  disabled={isLoading}
+                  className="hidden"
+                />
+              </label>
+
+              <p className="mt-1 text-[10px] text-neutral-400 dark:text-zinc-600">
+                JPG, PNG or WEBP. Max 2MB.
+              </p>
+            </div>
           </div>
 
+          {/* Name */}
           <div>
-            <label
-              htmlFor="name"
-              className="mb-2 block text-sm font-semibold text-slate-700"
-            >
-              Name
+            <label htmlFor="name" className={labelClasses}>
+              Display Name
             </label>
 
             <input
@@ -130,15 +230,14 @@ function EditProfileModal({
               value={formData.name}
               onChange={handleChange}
               required
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              disabled={isLoading}
+              className={`${inputClasses} font-bold disabled:cursor-not-allowed disabled:opacity-60`}
             />
           </div>
 
+          {/* Username */}
           <div>
-            <label
-              htmlFor="username"
-              className="mb-2 block text-sm font-semibold text-slate-700"
-            >
+            <label htmlFor="username" className={labelClasses}>
               Username
             </label>
 
@@ -149,16 +248,15 @@ function EditProfileModal({
               value={formData.username}
               onChange={handleChange}
               required
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              disabled={isLoading}
+              className={`${inputClasses} font-mono text-xs disabled:cursor-not-allowed disabled:opacity-60`}
             />
           </div>
 
+          {/* Bio */}
           <div>
-            <label
-              htmlFor="bio"
-              className="mb-2 block text-sm font-semibold text-slate-700"
-            >
-              Bio
+            <label htmlFor="bio" className={labelClasses}>
+              Biography Statement
             </label>
 
             <textarea
@@ -168,30 +266,36 @@ function EditProfileModal({
               value={formData.bio}
               onChange={handleChange}
               maxLength={250}
-              placeholder="Write something about yourself..."
-              className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              disabled={isLoading}
+              placeholder="Tell the lounge about yourself."
+              className={`${inputClasses} resize-none disabled:cursor-not-allowed disabled:opacity-60`}
             />
 
-            <p className="mt-1 text-right text-xs text-slate-400">
+            <p className="mt-2 text-right text-[10px] font-bold text-neutral-400 dark:text-zinc-600">
               {formData.bio.length}/250
             </p>
           </div>
 
           {isLoading ? <Loader text="Saving profile..." /> : null}
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button
+          {/* Actions */}
+          <div className="flex flex-col-reverse gap-3 border-t border-neutral-200 pt-5 dark:border-zinc-900 sm:flex-row sm:justify-end">
+            <button
               type="button"
-              variant="secondary"
-              onClick={onClose}
+              onClick={handleOverlayClose}
               disabled={isLoading}
+              className="rounded-lg border border-neutral-200 bg-neutral-100 px-5 py-3 text-xs font-extrabold text-neutral-800 transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
               Cancel
-            </Button>
+            </button>
 
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Changes"}
-            </Button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="rounded-lg bg-[#0095f6] px-5 py-3 text-xs font-extrabold text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading ? "Saving..." : "Submit Updates"}
+            </button>
           </div>
         </form>
       </div>

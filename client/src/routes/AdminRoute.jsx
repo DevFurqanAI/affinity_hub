@@ -21,7 +21,7 @@ function AdminRoute() {
   }
 
   if (user?.role !== "admin") {
-    return <Navigate to="/feed" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return <Outlet />;

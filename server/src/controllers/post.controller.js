@@ -7,6 +7,7 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import canViewPost from "../utils/canViewPost.js";
+import { addStoryStatusToUsers } from "../utils/storyStatus.helpers.js";
 import {
   getBlockedUserIdsForViewer,
   hasBlockRelation
@@ -70,28 +71,57 @@ const uploadBufferToCloudinary = (fileBuffer, mediaType) => {
 };
 
 const addLikeStatusToPosts = async (posts, userId) => {
-  const postIds = posts.map((post) => post._id);
+  const postObjects = posts.map((post) =>
+    post?.toObject ? post.toObject() : { ...post }
+  );
 
-  const likes = await Like.find({
-    post: {
-      $in: postIds
-    },
-    user: userId
-  }).select("post");
+  const postIds = postObjects.map((post) => post._id);
 
-  const likedPostIds = new Set(likes.map((like) => like.post.toString()));
+  const likes =
+    postIds.length > 0
+      ? await Like.find({
+          post: {
+            $in: postIds
+          },
+          user: userId
+        }).select("post")
+      : [];
 
-  return posts.map((post) => {
-    const postObject = post.toObject ? post.toObject() : post;
+  const likedPostIds = new Set(
+    likes.map((like) => like.post.toString())
+  );
 
-    if (postObject.author?.status) {
-      delete postObject.author.status;
+  const uniqueAuthors = new Map();
+
+  postObjects.forEach((post) => {
+    if (post.author?.status) {
+      delete post.author.status;
     }
 
-    postObject.isLikedByMe = likedPostIds.has(postObject._id.toString());
-
-    return postObject;
+    if (post.author?._id) {
+      uniqueAuthors.set(post.author._id.toString(), post.author);
+    }
   });
+
+  const authorsWithStoryStatus = await addStoryStatusToUsers(
+    [...uniqueAuthors.values()],
+    userId
+  );
+
+  const authorsById = new Map(
+    authorsWithStoryStatus.map((author) => [
+      author._id.toString(),
+      author
+    ])
+  );
+
+  return postObjects.map((post) => ({
+    ...post,
+    author: post.author?._id
+      ? authorsById.get(post.author._id.toString()) || post.author
+      : post.author,
+    isLikedByMe: likedPostIds.has(post._id.toString())
+  }));
 };
 
 export const createPost = asyncHandler(async (req, res) => {

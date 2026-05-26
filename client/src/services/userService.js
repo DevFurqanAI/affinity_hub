@@ -33,6 +33,14 @@ const userService = {
     });
 
     return response.data;
+  },
+
+  deactivateAccount: async (password) => {
+    const response = await api.patch("/users/me/deactivate", {
+      password
+    });
+
+    return response.data;
   }
 };
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import Button from "../../components/common/Button.jsx";
 import Input from "../../components/common/Input.jsx";
-import Card from "../../components/common/Card.jsx";
+import AuthShell from "../../components/auth/AuthShell.jsx";
 import GoogleAuthButton from "../../components/auth/GoogleAuthButton.jsx";
 import useAuthStore from "../../store/authStore.js";
 import { getNextOnboardingPath } from "../../utils/onboarding.js";
@@ -37,77 +37,86 @@ function LoginPage() {
       return;
     }
 
+    if (result.user?.status === "banned") {
+      navigate("/banned-account", { replace: true });
+      return;
+    }
+
     navigate(getNextOnboardingPath(result.user), { replace: true });
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-900 text-xl font-black text-white">
-            AH
-          </div>
+    <AuthShell
+      eyebrow="Welcome Back"
+      title="Sign in to Affinity Hub"
+      description="Return to your timeline, conversations, and student community."
+      footer={
+        <p>
+          New to Affinity Hub?{" "}
+          <Link
+            to="/register"
+            className="font-black text-rose-500 transition hover:text-rose-400"
+          >
+            Create an account
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Input
+          id="email"
+          label="Email Address"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+        />
 
-          <h1 className="mt-4 text-3xl font-black text-slate-900">
-            Welcome Back
-          </h1>
+        <Input
+          id="password"
+          label="Password"
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="Enter your password"
+          autoComplete="current-password"
+          required
+        />
 
-          <p className="mt-2 text-sm text-slate-500">
-            Login to continue to Affinity Hub.
-          </p>
+        <div className="-mt-2 flex justify-end">
+          <Link
+            to="/forgot-password"
+            className="text-xs font-bold text-rose-500 transition hover:text-rose-400"
+          >
+            Forgot password?
+          </Link>
         </div>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Input
-              id="email"
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              required
-            />
+        <Button
+          type="submit"
+          className="w-full !border-0 !bg-gradient-to-r !from-rose-600 !to-amber-500 !text-white hover:brightness-110"
+          disabled={isLoading}
+        >
+          {isLoading ? "Signing in..." : "Sign In"}
+        </Button>
+      </form>
 
-            <Input
-              id="password"
-              label="Password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-              required
-            />
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-[var(--color-border)]" />
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging in..." : "Login"}
-            </Button>
-          </form>
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
+          or
+        </span>
 
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              or continue with
-            </span>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-
-          <GoogleAuthButton label="Google users do not need OTP verification." />
-
-          <p className="mt-6 text-center text-sm text-slate-500">
-            Don't have an account?{" "}
-            <Link
-              to="/register"
-              className="font-bold text-slate-900 hover:underline"
-            >
-              Register
-            </Link>
-          </p>
-        </Card>
+        <div className="h-px flex-1 bg-[var(--color-border)]" />
       </div>
-    </main>
+
+      <GoogleAuthButton label="Continue securely with your Google account." />
+    </AuthShell>
   );
 }
 

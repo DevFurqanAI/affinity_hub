@@ -23,11 +23,60 @@ export const updateReportStatusValidationSchema = {
   }),
 
   body: z.object({
-    status: z.enum(["pending", "reviewed", "rejected", "action_taken"], {
-      message:
-        "Status must be pending, reviewed, rejected, or action_taken"
+    status: z.enum(["pending", "reviewed", "rejected"], {
+      message: "Status must be pending, reviewed, or rejected"
     })
   })
+};
+
+export const takeReportActionValidationSchema = {
+  params: z.object({
+    reportId: mongoIdSchema
+  }),
+
+  body: z
+    .object({
+      action: z.enum([
+        "content_removed",
+        "user_banned",
+        "content_removed_and_user_banned"
+      ]),
+
+      moderationNote: z
+        .string()
+        .trim()
+        .max(500, "Moderation note must not be more than 500 characters")
+        .optional()
+        .default(""),
+
+      banReason: z
+        .string()
+        .trim()
+        .max(500, "Ban reason must not be more than 500 characters")
+        .optional(),
+
+      expiresAt: z
+        .string()
+        .datetime("expiresAt must be a valid date-time")
+        .optional()
+        .nullable()
+    })
+    .superRefine((data, ctx) => {
+      const actionIncludesBan =
+        data.action === "user_banned" ||
+        data.action === "content_removed_and_user_banned";
+
+      if (
+        actionIncludesBan &&
+        (!data.banReason || data.banReason.trim().length < 5)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["banReason"],
+          message: "Ban reason must be at least 5 characters long"
+        });
+      }
+    })
 };
 
 export const reportIdParamValidationSchema = {

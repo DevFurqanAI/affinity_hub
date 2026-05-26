@@ -31,10 +31,20 @@ const checkUserBanStatus = async (user) => {
 
   if (activeBan.expiresAt && activeBan.expiresAt <= new Date()) {
     activeBan.isActive = false;
+    activeBan.endType = "expired";
+    activeBan.endedAt = new Date();
+
     await activeBan.save({ validateBeforeSave: false });
 
-    user.status = "active";
-    await user.save({ validateBeforeSave: false });
+    if (user.status === "banned") {
+      const restorableStatuses = ["active", "suspended", "deactivated"];
+
+      user.status = restorableStatuses.includes(activeBan.previousStatus)
+        ? activeBan.previousStatus
+        : "active";
+
+      await user.save({ validateBeforeSave: false });
+    }
 
     return {
       isBanned: false,
@@ -78,6 +88,15 @@ const isLocalUnverifiedUser = (user) => {
   return user.authProvider === "local" && user.isVerified === false;
 };
 
+const rejectDeactivatedAccount = (user) => {
+  if (user.status === "deactivated") {
+    throw new ApiError(
+      403,
+      "Your account is deactivated. Sign in again to reactivate it."
+    );
+  }
+};
+
 /*
 |--------------------------------------------------------------------------
 | Normal Protected API Middleware
@@ -85,6 +104,7 @@ const isLocalUnverifiedUser = (user) => {
 | Blocks:
 | - banned users
 | - suspended users
+| - deactivated users
 | - local unverified users
 |
 | Does NOT block:
@@ -92,6 +112,7 @@ const isLocalUnverifiedUser = (user) => {
 | - interestsSetupCompleted === false
 |
 | Onboarding redirects are handled by frontend route guards.
+|--------------------------------------------------------------------------
 */
 export const verifyJWT = asyncHandler(async (req, res, next) => {
   const user = await getUserFromAccessToken(req);
@@ -112,6 +133,8 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
     );
   }
 
+  rejectDeactivatedAccount(user);
+
   if (isLocalUnverifiedUser(user)) {
     throw new ApiError(
       403,
@@ -128,34 +151,42 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
 | Unverified-Allowed Middleware
 |--------------------------------------------------------------------------
 | Allows:
-| - local unverified users
+| - local unverified users for verification flow
 |
 | Blocks:
 | - banned users
 | - suspended users
+| - deactivated users
+|
+| Deactivated accounts are restored only through a successful login.
+|--------------------------------------------------------------------------
 */
-export const verifyJWTAllowUnverified = asyncHandler(async (req, res, next) => {
-  const user = await getUserFromAccessToken(req);
+export const verifyJWTAllowUnverified = asyncHandler(
+  async (req, res, next) => {
+    const user = await getUserFromAccessToken(req);
 
-  const banStatus = await checkUserBanStatus(user);
+    const banStatus = await checkUserBanStatus(user);
 
-  if (banStatus.isBanned || user.status === "banned") {
-    throw new ApiError(
-      403,
-      "Your account is banned. You cannot access this resource."
-    );
+    if (banStatus.isBanned || user.status === "banned") {
+      throw new ApiError(
+        403,
+        "Your account is banned. You cannot access this resource."
+      );
+    }
+
+    if (user.status === "suspended") {
+      throw new ApiError(
+        403,
+        "Your account is suspended. You cannot access this resource."
+      );
+    }
+
+    rejectDeactivatedAccount(user);
+
+    req.user = user;
+    next();
   }
-
-  if (user.status === "suspended") {
-    throw new ApiError(
-      403,
-      "Your account is suspended. You cannot access this resource."
-    );
-  }
-
-  req.user = user;
-  next();
-});
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -166,6 +197,8 @@ export const verifyJWTAllowUnverified = asyncHandler(async (req, res, next) => {
 |
 | Blocks:
 | - suspended users
+| - deactivated users
+|--------------------------------------------------------------------------
 */
 export const verifyJWTAllowBanned = asyncHandler(async (req, res, next) => {
   const user = await getUserFromAccessToken(req);
@@ -176,6 +209,8 @@ export const verifyJWTAllowBanned = asyncHandler(async (req, res, next) => {
       "Your account is suspended. You cannot access this resource."
     );
   }
+
+  rejectDeactivatedAccount(user);
 
   req.user = user;
   next();

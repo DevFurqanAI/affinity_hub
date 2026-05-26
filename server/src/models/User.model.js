@@ -49,6 +49,26 @@ const userSchema = new mongoose.Schema(
       default: null
     },
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Account Connection State
+    |--------------------------------------------------------------------------
+    | undefined:
+    |   Legacy account; connection is inferred from providerId/authProvider.
+    |
+    | true:
+    |   Google login is explicitly connected.
+    |
+    | false:
+    |   Google login was explicitly disconnected and cannot be used again
+    |   until the user reconnects it from Settings.
+    |--------------------------------------------------------------------------
+    */
+    googleAccountLinked: {
+      type: Boolean,
+      default: undefined
+    },
+
     bio: {
       type: String,
       trim: true,
@@ -69,8 +89,40 @@ const userSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["active", "banned", "suspended"],
+      enum: ["active", "banned", "suspended", "deactivated"],
       default: "active"
+    },
+
+    deactivatedAt: {
+      type: Date,
+      default: null
+    },
+
+    /*
+    |--------------------------------------------------------------------------
+    | Administrative Suspension State
+    |--------------------------------------------------------------------------
+    | Suspension is controlled by admins and is different from:
+    | - banned: serious violation with appeal flow
+    | - deactivated: voluntarily hidden by the user
+    |--------------------------------------------------------------------------
+    */
+    suspensionReason: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Suspension reason must not be more than 500 characters"],
+      default: ""
+    },
+
+    suspendedAt: {
+      type: Date,
+      default: null
+    },
+
+    suspendedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null
     },
 
     isVerified: {
@@ -121,6 +173,56 @@ const userSchema = new mongoose.Schema(
       default: null
     },
 
+    /*
+    |--------------------------------------------------------------------------
+    | Password Reset OTP State
+    |--------------------------------------------------------------------------
+    | Password reset uses a separate OTP flow from initial email verification.
+    |--------------------------------------------------------------------------
+    */
+    passwordResetOtpHash: {
+      type: String,
+      select: false,
+      default: null
+    },
+
+    passwordResetOtpExpires: {
+      type: Date,
+      select: false,
+      default: null
+    },
+
+    passwordResetOtpAttempts: {
+      type: Number,
+      default: 0,
+      select: false
+    },
+
+    lastPasswordResetOtpSentAt: {
+      type: Date,
+      select: false,
+      default: null
+    },
+
+    /*
+    |--------------------------------------------------------------------------
+    | One-Time Password Reset Grant
+    |--------------------------------------------------------------------------
+    | After OTP verification, the server returns a one-time raw reset token.
+    | Only its hash is stored in the database.
+    |--------------------------------------------------------------------------
+    */
+    passwordResetTokenHash: {
+      type: String,
+      select: false,
+      default: null
+    },
+
+    passwordResetTokenExpires: {
+      type: Date,
+      select: false,
+      default: null
+    },
     refreshToken: {
       type: String,
       select: false,

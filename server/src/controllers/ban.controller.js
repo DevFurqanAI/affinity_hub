@@ -56,6 +56,14 @@ const getPaginationValues = (req) => {
   };
 };
 
+const getRestoredStatusAfterBan = (ban) => {
+  const validPreviousStatuses = ["active", "suspended", "deactivated"];
+
+  return validPreviousStatuses.includes(ban.previousStatus)
+    ? ban.previousStatus
+    : "active";
+};
+
 /*
 |--------------------------------------------------------------------------
 | POST /api/bans/:userId
@@ -84,6 +92,10 @@ export const banUser = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You cannot ban another admin");
   }
 
+  if (userToBan.status === "banned") {
+    throw new ApiError(409, "User is already banned");
+  }
+
   const activeBan = await Ban.findOne({
     user: userId,
     isActive: true,
@@ -103,11 +115,18 @@ export const banUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User is already banned");
   }
 
+  const previousStatus = ["active", "suspended", "deactivated"].includes(
+    userToBan.status
+  )
+    ? userToBan.status
+    : "active";
+
   const ban = await Ban.create({
     user: userId,
     admin: req.user._id,
     reason,
-    expiresAt: expiresAt ? new Date(expiresAt) : null
+    expiresAt: expiresAt ? new Date(expiresAt) : null,
+    previousStatus
   });
 
   userToBan.status = "banned";
@@ -160,13 +179,17 @@ export const removeBan = asyncHandler(async (req, res) => {
   }
 
   ban.isActive = false;
-  ban.expiresAt = new Date();
+  ban.endType = "removed";
+  ban.endedAt = new Date();
+  ban.endedBy = req.user._id;
+
   await ban.save({ validateBeforeSave: false });
 
   const user = await User.findById(ban.user);
 
-  if (user) {
-    user.status = "active";
+  if (user && user.status === "banned") {
+    user.status = getRestoredStatusAfterBan(ban);
+
     await user.save({ validateBeforeSave: false });
 
     await createNotification({
@@ -200,6 +223,62 @@ export const removeBan = asyncHandler(async (req, res) => {
 | Banned user submits appeal.
 | This route uses verifyJWTAllowBanned, so banned users can access it.
 */
+
+/*
+|--------------------------------------------------------------------------
+| GET /api/bans/me/active
+|--------------------------------------------------------------------------
+| Restricted authenticated user views their active ban and appeal status.
+*/
+export const getMyActiveBan = asyncHandler(async (req, res) => {
+  if (req.user.status !== "banned") {
+    throw new ApiError(403, "Your account is not currently banned");
+  }
+
+  const ban = await Ban.findOne({
+    user: req.user._id,
+    isActive: true,
+    $or: [
+      {
+        expiresAt: null
+      },
+      {
+        expiresAt: {
+          $gt: new Date()
+        }
+      }
+    ]
+  })
+    .populate(adminPopulate)
+    .sort({ createdAt: -1 });
+
+  if (!ban) {
+    throw new ApiError(
+      404,
+      "No active ban was found. Please sign in again to refresh your account status."
+    );
+  }
+
+  const appeal = await Appeal.findOne({
+    ban: ban._id,
+    user: req.user._id
+  })
+    .populate(reviewedByPopulate)
+    .sort({ createdAt: -1 });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        ban,
+        appeal,
+        canAppeal: !appeal
+      },
+      "Active ban fetched successfully"
+    )
+  );
+});
+
 export const submitAppeal = asyncHandler(async (req, res) => {
   const { banId } = req.params;
   const { message } = req.body;
@@ -221,14 +300,16 @@ export const submitAppeal = asyncHandler(async (req, res) => {
     throw new ApiError(403, "You can only appeal your own ban");
   }
 
-  const existingPendingAppeal = await Appeal.findOne({
+  const existingAppeal = await Appeal.findOne({
     ban: ban._id,
-    user: req.user._id,
-    status: "pending"
+    user: req.user._id
   });
 
-  if (existingPendingAppeal) {
-    throw new ApiError(409, "You already have a pending appeal for this ban");
+  if (existingAppeal) {
+    throw new ApiError(
+      409,
+      "You have already submitted an appeal for this ban"
+    );
   }
 
   const appeal = await Appeal.create({
@@ -337,14 +418,17 @@ export const reviewAppeal = asyncHandler(async (req, res) => {
 
   if (status === "accepted" && unbanUser) {
     ban.isActive = false;
-    ban.expiresAt = new Date();
+    ban.endType = "appeal_accepted";
+    ban.endedAt = new Date();
+    ban.endedBy = req.user._id;
 
     await ban.save({ validateBeforeSave: false });
 
     const user = await User.findById(appeal.user);
 
-    if (user) {
-      user.status = "active";
+    if (user && user.status === "banned") {
+      user.status = getRestoredStatusAfterBan(ban);
+
       await user.save({ validateBeforeSave: false });
     }
   }

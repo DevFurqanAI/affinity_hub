@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import PageContainer from "../../components/common/PageContainer.jsx";
-import PostList from "../../components/posts/PostList.jsx";
+import ExplorePostGrid from "../../components/explore/ExplorePostGrid.jsx";
 import postService from "../../services/postService.js";
 
-const PAGE_LIMIT = 10;
+const PAGE_LIMIT = 12;
 
 function ExplorePage() {
   const [posts, setPosts] = useState([]);
@@ -65,7 +64,10 @@ function ExplorePage() {
 
     setPagination((previousPagination) => ({
       ...previousPagination,
-      totalPosts: Math.max((previousPagination.totalPosts || 0) - 1, 0)
+      totalPosts: Math.max(
+        (previousPagination.totalPosts || 0) - 1,
+        0
+      )
     }));
   };
 
@@ -74,21 +76,33 @@ function ExplorePage() {
   };
 
   return (
-    <PageContainer
-      title="Explore"
-      subtitle="Discover public posts from active Affinity Hub users."
-      maxWidth="max-w-3xl"
-    >
-      <PostList
+    <div className="mx-auto w-full max-w-5xl px-5 pb-14 pt-12 sm:px-6 lg:pt-16">
+      {/* UiLab-style Explore Heading */}
+      <header className="mx-auto mb-12 max-w-xl text-center">
+        <p className="font-mono text-[10px] font-black uppercase tracking-[0.28em] text-rose-500">
+          Explore Moments
+        </p>
+
+        <h1 className="mt-4 text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
+          Explore the Lounge
+        </h1>
+
+        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[var(--color-text-muted)]">
+          Discover public posts, student projects, campus life, and creative
+          moments shared across Affinity Hub.
+        </p>
+      </header>
+
+      <ExplorePostGrid
         posts={posts}
         isLoading={isLoading}
-        emptyMessage="No public posts are available yet."
+        emptyMessage="There are no public posts available to explore yet."
         pagination={pagination}
         onLoadMore={handleLoadMore}
         onPostUpdated={handlePostUpdated}
         onPostDeleted={handlePostDeleted}
       />
-    </PageContainer>
+    </div>
   );
 }
 

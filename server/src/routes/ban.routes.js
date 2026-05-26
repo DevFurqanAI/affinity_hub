@@ -9,6 +9,7 @@ import validate from "../middlewares/validate.middleware.js";
 import {
   banUser,
   removeBan,
+  getMyActiveBan,
   submitAppeal,
   getAppeals,
   reviewAppeal
@@ -38,6 +39,8 @@ router.patch(
   validate(reviewAppealValidationSchema),
   reviewAppeal
 );
+
+router.get("/me/active", verifyJWTAllowBanned, getMyActiveBan);
 
 router.post(
   "/:banId/appeal",

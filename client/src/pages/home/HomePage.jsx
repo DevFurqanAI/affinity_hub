@@ -1,10 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import PageContainer from "../../components/common/PageContainer.jsx";
-import Card from "../../components/common/Card.jsx";
-import Button from "../../components/common/Button.jsx";
 import StoryBar from "../../components/stories/StoryBar.jsx";
 import CreatePostBox from "../../components/posts/CreatePostBox.jsx";
 import PostList from "../../components/posts/PostList.jsx";
@@ -14,8 +10,6 @@ import postService from "../../services/postService.js";
 const PAGE_LIMIT = 10;
 
 function HomePage() {
-  const createPostRef = useRef(null);
-
   const [posts, setPosts] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -94,90 +88,34 @@ function HomePage() {
     loadHomePosts(pagination.page + 1, false);
   };
 
-  const scrollToCreatePost = () => {
-    createPostRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center"
-    });
-  };
-
-  const emptyHomeState = (
-    <Card>
-      <div className="text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-100 text-3xl">
-          🌱
-        </div>
-
-        <h2 className="mt-4 text-xl font-black text-slate-900">
-          Your home feed is just getting started
-        </h2>
-
-        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
-          Follow people, choose interests, explore posts, or create your first post
-          to make your Home page feel alive.
-        </p>
-
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Link to="/explore">
-            <Button variant="outline" className="w-full">
-              Explore Posts
-            </Button>
-          </Link>
-
-          <Link to="/search">
-            <Button variant="outline" className="w-full">
-              Find People
-            </Button>
-          </Link>
-
-          <Link to="/choose-interests">
-            <Button variant="outline" className="w-full">
-              Choose Interests
-            </Button>
-          </Link>
-
-          <Button onClick={scrollToCreatePost} className="w-full">
-            Create First Post
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
-
   return (
-    <PageContainer
-      title="Home"
-      subtitle="Your main page for stories, posts, and people you follow."
-      maxWidth="max-w-6xl"
-    >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-6">
+    <div className="mx-auto max-w-4xl px-5 py-6 md:px-6 md:py-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        <section className="space-y-6 lg:col-span-8">
           <StoryBar />
 
-          <div ref={createPostRef}>
-            <CreatePostBox onPostCreated={handlePostCreated} />
+          <div className="flex items-center gap-6 border-b border-[var(--color-border)] pb-0.5">
+            <div className="border-b-2 border-[var(--color-primary)] px-1 pb-2 text-xs font-black uppercase tracking-widest text-[var(--color-primary)]">
+              Following
+            </div>
           </div>
 
-          {posts.length === 0 && !isLoading ? (
-            emptyHomeState
-          ) : (
-            <PostList
-              posts={posts}
-              isLoading={isLoading}
-              emptyMessage="Your home feed is just getting started."
-              pagination={pagination}
-              onLoadMore={handleLoadMore}
-              onPostUpdated={handlePostUpdated}
-              onPostDeleted={handlePostDeleted}
-            />
-          )}
-        </div>
+          <CreatePostBox onPostCreated={handlePostCreated} />
 
-        <div className="hidden xl:block">
-          <SuggestionsSidebar />
-        </div>
+          <PostList
+            posts={posts}
+            isLoading={isLoading}
+            emptyMessage="No active posts match your home feed yet."
+            pagination={pagination}
+            onLoadMore={handleLoadMore}
+            onPostUpdated={handlePostUpdated}
+            onPostDeleted={handlePostDeleted}
+          />
+        </section>
+
+        <SuggestionsSidebar />
       </div>
-    </PageContainer>
+    </div>
   );
 }
 

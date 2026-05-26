@@ -3,8 +3,8 @@ import { Navigate, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import Button from "../../components/common/Button.jsx";
-import Card from "../../components/common/Card.jsx";
 import Input from "../../components/common/Input.jsx";
+import AuthShell from "../../components/auth/AuthShell.jsx";
 import useAuthStore from "../../store/authStore.js";
 import userService from "../../services/userService.js";
 import {
@@ -43,6 +43,14 @@ function CompleteProfilePage() {
       setAvatarPreview(user.avatar || "");
     }
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -114,28 +122,42 @@ function CompleteProfilePage() {
   };
 
   const isSaving = isLoading || isAvatarUploading;
+  const avatarText = formData.name?.charAt(0)?.toUpperCase() || "A";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
-      <div className="w-full max-w-lg">
-        <div className="mb-6 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-900 text-xl font-black text-white">
-            AH
-          </div>
+    <AuthShell
+      eyebrow="Build Your Identity"
+      title="Complete your profile"
+      description="Choose how other students will discover and recognize you."
+      footer={
+        <p className="text-xs">
+          Your profile information can be edited later.
+        </p>
+      }
+    >
+      <div className="mb-6 flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-500">
+            Profile Setup
+          </p>
 
-          <h1 className="mt-4 text-3xl font-black text-slate-900">
-            Complete your profile
-          </h1>
-
-          <p className="mt-2 text-sm text-slate-500">
-            Choose how people will see you on Affinity Hub.
+          <p className="mt-1 text-xs font-bold text-[var(--color-text)]">
+            Public student identity
           </p>
         </div>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl bg-slate-200 text-3xl font-bold text-slate-700">
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-7 rounded-full bg-rose-500" />
+          <span className="h-1.5 w-7 rounded-full bg-rose-500" />
+          <span className="h-1.5 w-7 rounded-full bg-[var(--color-border)]" />
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="flex items-center gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4">
+          <div className="shrink-0 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600 p-[2px]">
+            <div className="rounded-full bg-[var(--color-surface)] p-[3px]">
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-xl font-black text-[var(--color-text)]">
                 {avatarPreview ? (
                   <img
                     src={avatarPreview}
@@ -143,83 +165,93 @@ function CompleteProfilePage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  formData.name?.charAt(0)?.toUpperCase() || "A"
+                  avatarText
                 )}
               </div>
-
-              <label className="cursor-pointer rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
-                Upload Avatar
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                />
-              </label>
-
-              {avatarFile ? (
-                <p className="text-xs text-slate-500">
-                  Selected: {avatarFile.name}
-                </p>
-              ) : null}
             </div>
+          </div>
 
-            <Input
-              id="name"
-              label="Display Name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Saleha Eisha"
-              required
-            />
+          <div className="min-w-0">
+            <p className="text-xs font-black text-[var(--color-text)]">
+              Profile photo
+            </p>
 
-            <Input
-              id="username"
-              label="Username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              placeholder="saleha.eisha"
-              helper="Lowercase letters, numbers, underscore, and dot are allowed."
-              required
-            />
-
-            <div>
-              <label
-                htmlFor="bio"
-                className="mb-2 block text-sm font-semibold text-slate-700"
-              >
-                Bio
-              </label>
-
-              <textarea
-                id="bio"
-                name="bio"
-                value={formData.bio}
-                onChange={handleChange}
-                rows="4"
-                maxLength={250}
-                placeholder="Tell people a little about yourself..."
-                className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+            <label className="mt-1 inline-block cursor-pointer text-[11px] font-black text-[#0095f6] transition hover:text-blue-500">
+              Upload photo
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleAvatarChange}
+                disabled={isSaving}
+                className="hidden"
               />
+            </label>
 
-              <p className="mt-1 text-right text-xs text-slate-400">
-                {formData.bio.length}/250
-              </p>
-            </div>
+            <p className="mt-1 truncate text-[10px] text-[var(--color-text-muted)]">
+              {avatarFile ? avatarFile.name : "JPG, PNG or WEBP"}
+            </p>
+          </div>
+        </div>
 
-            <Button type="submit" className="w-full" disabled={isSaving}>
-              {isAvatarUploading
-                ? "Uploading avatar..."
-                : isLoading
-                  ? "Saving..."
-                  : "Save and Continue"}
-            </Button>
-          </form>
-        </Card>
-      </div>
-    </main>
+        <Input
+          id="name"
+          label="Display Name"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          placeholder="Saleha Eisha"
+          required
+        />
+
+        <Input
+          id="username"
+          label="Username"
+          name="username"
+          value={formData.username}
+          onChange={handleChange}
+          placeholder="saleha.eisha"
+          helper="This becomes your public profile identity."
+          required
+        />
+
+        <div>
+          <label
+            htmlFor="bio"
+            className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)]"
+          >
+            Biography
+          </label>
+
+          <textarea
+            id="bio"
+            name="bio"
+            value={formData.bio}
+            onChange={handleChange}
+            rows="4"
+            maxLength={250}
+            disabled={isSaving}
+            placeholder="Tell the lounge something about yourself..."
+            className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary)] disabled:opacity-60"
+          />
+
+          <p className="mt-1.5 text-right text-[10px] font-bold text-[var(--color-text-muted)]">
+            {formData.bio.length}/250
+          </p>
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full !border-0 !bg-gradient-to-r !from-rose-600 !to-amber-500 !text-white hover:brightness-110"
+          disabled={isSaving}
+        >
+          {isAvatarUploading
+            ? "Uploading photo..."
+            : isLoading
+              ? "Saving profile..."
+              : "Save and Continue"}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }
 

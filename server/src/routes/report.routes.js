@@ -7,11 +7,13 @@ import {
   createReport,
   getAllReports,
   updateReportStatus,
+  takeReportAction,
   deleteReport
 } from "../controllers/report.controller.js";
 import {
   createReportValidationSchema,
   updateReportStatusValidationSchema,
+  takeReportActionValidationSchema,
   reportIdParamValidationSchema,
   getReportsQueryValidationSchema
 } from "../validations/report.validation.js";
@@ -39,6 +41,14 @@ router.patch(
   verifyAdmin,
   validate(updateReportStatusValidationSchema),
   updateReportStatus
+);
+
+router.patch(
+  "/:reportId/action",
+  verifyJWT,
+  verifyAdmin,
+  validate(takeReportActionValidationSchema),
+  takeReportAction
 );
 
 router.delete(

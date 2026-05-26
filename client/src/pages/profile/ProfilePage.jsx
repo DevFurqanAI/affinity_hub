@@ -5,10 +5,10 @@ import toast from "react-hot-toast";
 import Loader from "../../components/common/Loader.jsx";
 import Button from "../../components/common/Button.jsx";
 import ProfileHeader from "../../components/profile/ProfileHeader.jsx";
+import ProfilePostGrid from "../../components/profile/ProfilePostGrid.jsx";
 import EditProfileModal from "../../components/profile/EditProfileModal.jsx";
 import FollowersModal from "../../components/profile/FollowersModal.jsx";
 import FollowingModal from "../../components/profile/FollowingModal.jsx";
-import PostList from "../../components/posts/PostList.jsx";
 import userService from "../../services/userService.js";
 import followService from "../../services/followService.js";
 import blockService from "../../services/blockService.js";
@@ -58,7 +58,9 @@ function ProfilePage({ isMePage = false }) {
         const result = await followService.getFollowing(loggedInUserId);
         const followingList = result.data?.following || [];
 
-        setIsFollowing(followingList.some((user) => user._id === targetUserId));
+        setIsFollowing(
+          followingList.some((user) => user._id === targetUserId)
+        );
       } catch {
         setIsFollowing(false);
       }
@@ -66,7 +68,7 @@ function ProfilePage({ isMePage = false }) {
     [loggedInUserId]
   );
 
- const checkIfBlockedByMe = useCallback(
+  const checkIfBlockedByMe = useCallback(
     async (targetUserId) => {
       if (!loggedInUserId || !targetUserId || loggedInUserId === targetUserId) {
         setIsBlockedByMe(false);
@@ -77,7 +79,9 @@ function ProfilePage({ isMePage = false }) {
         const result = await blockService.getBlockedUsers();
         const blockedUsers = result.data?.blockedUsers || [];
 
-        setIsBlockedByMe(blockedUsers.some((user) => user._id === targetUserId));
+        setIsBlockedByMe(
+          blockedUsers.some((user) => user._id === targetUserId)
+        );
       } catch {
         setIsBlockedByMe(false);
       }
@@ -132,7 +136,7 @@ function ProfilePage({ isMePage = false }) {
     },
     []
   );
-  
+
   const loadProfile = useCallback(async () => {
     try {
       setIsPageLoading(true);
@@ -170,7 +174,10 @@ function ProfilePage({ isMePage = false }) {
     loadProfile();
   }, [loadProfile]);
 
-  const handleFollowChange = ({ isFollowing: newFollowingState, followersCount }) => {
+  const handleFollowChange = ({
+    isFollowing: newFollowingState,
+    followersCount
+  }) => {
     setIsFollowing(newFollowingState);
 
     setProfileUser((previousUser) => ({
@@ -206,7 +213,6 @@ function ProfilePage({ isMePage = false }) {
         const result = await blockService.unblockUser(profileUser._id);
 
         setIsBlockedByMe(false);
-
         toast.success(result.message || "User unblocked successfully");
 
         await loadUserPosts(profileUser.username, 1, true);
@@ -226,14 +232,22 @@ function ProfilePage({ isMePage = false }) {
 
         setProfileUser((previousUser) => ({
           ...previousUser,
-          followersCount: Math.max((previousUser?.followersCount || 0) - 1, 0),
-          followingCount: Math.max((previousUser?.followingCount || 0) - 1, 0)
+          followersCount: Math.max(
+            (previousUser?.followersCount || 0) - 1,
+            0
+          ),
+          followingCount: Math.max(
+            (previousUser?.followingCount || 0) - 1,
+            0
+          )
         }));
 
         toast.success(result.message || "User blocked successfully");
       }
     } catch (error) {
-      const message = error.response?.data?.message || "Block action failed";
+      const message =
+        error.response?.data?.message || "Block action failed";
+
       toast.error(message);
     } finally {
       setIsBlockLoading(false);
@@ -305,7 +319,10 @@ function ProfilePage({ isMePage = false }) {
 
     setPagination((previousPagination) => ({
       ...previousPagination,
-      totalPosts: Math.max((previousPagination.totalPosts || 0) - 1, 0)
+      totalPosts: Math.max(
+        (previousPagination.totalPosts || 0) - 1,
+        0
+      )
     }));
   };
 
@@ -322,18 +339,22 @@ function ProfilePage({ isMePage = false }) {
   };
 
   if (isPageLoading) {
-    return <Loader text="Loading profile..." />;
+    return (
+      <div className="mx-auto w-full max-w-4xl px-6 py-12">
+        <Loader text="Loading profile..." />
+      </div>
+    );
   }
 
   if (!profileUser) {
     return (
-      <section className="flex min-h-[60vh] items-center justify-center">
-        <div className="max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">
+      <section className="flex min-h-[60vh] items-center justify-center px-5">
+        <div className="max-w-md rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 text-center">
+          <h1 className="text-xl font-black text-[var(--color-text)]">
             Profile Not Found
           </h1>
 
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
             The profile you are looking for does not exist.
           </p>
 
@@ -347,9 +368,10 @@ function ProfilePage({ isMePage = false }) {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="mx-auto w-full max-w-4xl space-y-8 px-5 py-8 sm:px-6">
         <ProfileHeader
           user={profileUser}
+          postsCount={pagination.totalPosts || 0}
           isOwnProfile={isOwnProfile}
           isFollowing={isFollowing}
           isBlockedByMe={isBlockedByMe}
@@ -362,7 +384,7 @@ function ProfilePage({ isMePage = false }) {
         />
 
         {!isBlockedByMe || isOwnProfile ? (
-          <PostList
+          <ProfilePostGrid
             posts={posts}
             isLoading={isPostsLoading}
             emptyMessage={

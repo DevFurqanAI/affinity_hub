@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import useAuthStore from "../../store/authStore.js";
+import { getNextOnboardingPath } from "../../utils/onboarding.js";
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -23,7 +24,12 @@ function GoogleAuthButton({ label = "Continue with Google" }) {
     const result = await googleAuth(credential);
 
     if (result.success) {
-      navigate("/feed", { replace: true });
+      if (result.user?.status === "banned") {
+        navigate("/banned-account", { replace: true });
+        return;
+      }
+
+      navigate(getNextOnboardingPath(result.user), { replace: true });
     }
   };
 
@@ -33,19 +39,34 @@ function GoogleAuthButton({ label = "Continue with Google" }) {
 
   if (!googleClientId) {
     return (
-      <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-center text-sm font-medium text-yellow-700">
-        Google login is not configured
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center text-xs font-semibold text-amber-500">
+        Google authentication is not configured.
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div className={isLoading ? "pointer-events-none opacity-60" : ""}>
-        <GoogleLogin onSuccess={handleSuccess} onError={handleError} />
+      <div
+        className={`flex justify-center overflow-hidden rounded-xl border border-[var(--color-border)] bg-white py-2 transition ${
+          isLoading ? "pointer-events-none opacity-60" : ""
+        }`}
+      >
+        <GoogleLogin
+          onSuccess={handleSuccess}
+          onError={handleError}
+          theme="outline"
+          shape="pill"
+          size="large"
+          text="continue_with"
+        />
       </div>
 
-      <p className="text-center text-xs text-slate-400">{label}</p>
+      {label ? (
+        <p className="text-center text-[11px] leading-5 text-[var(--color-text-muted)]">
+          {label}
+        </p>
+      ) : null}
     </div>
   );
 }

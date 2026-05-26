@@ -13,7 +13,10 @@ function Input({
   return (
     <div className="space-y-2">
       {label ? (
-        <label htmlFor={id} className="block text-sm font-semibold text-slate-700">
+        <label
+          htmlFor={id}
+          className="block text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)]"
+        >
           {label}
         </label>
       ) : null}
@@ -24,17 +27,24 @@ function Input({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full rounded-2xl border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-2 ${
+        aria-invalid={Boolean(error)}
+        className={`ui-input w-full rounded-lg border bg-[var(--color-surface-muted)] px-4 py-3 text-sm text-[var(--color-text)] outline-none transition placeholder:text-[var(--color-text-muted)] focus:ring-0 ${
           error
-            ? "border-red-300 focus:border-red-500 focus:ring-red-100"
-            : "border-slate-300 focus:border-slate-900 focus:ring-slate-200"
+            ? "border-[var(--color-danger)] focus:border-[var(--color-danger)]"
+            : "border-[var(--color-border)] focus:border-[var(--color-primary)]"
         } ${className}`}
         {...props}
       />
 
-      {error ? <p className="text-xs font-medium text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="text-xs font-semibold text-[var(--color-danger)]">
+          {error}
+        </p>
+      ) : null}
 
-      {!error && helper ? <p className="text-xs text-slate-400">{helper}</p> : null}
+      {!error && helper ? (
+        <p className="text-xs text-[var(--color-text-muted)]">{helper}</p>
+      ) : null}
     </div>
   );
 }

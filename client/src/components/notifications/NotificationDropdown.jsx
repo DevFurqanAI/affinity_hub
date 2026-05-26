@@ -144,23 +144,24 @@ function NotificationDropdown() {
       <button
         type="button"
         onClick={handleToggleDropdown}
-        className="relative rounded-full p-2 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+        className="ui-icon-button relative rounded-full p-2 focus:outline-none focus:ring-2 focus:ring-[var(--color-focus)]"
+        aria-label="Open notifications"
       >
         <span className="text-xl">🔔</span>
 
         {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-danger)] px-1 text-xs font-bold text-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         ) : null}
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl sm:w-96">
-          <div className="flex items-center justify-between border-b border-slate-100 p-4">
+        <div className="ui-card absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-3xl sm:w-96">
+          <div className="flex items-center justify-between border-b border-[var(--color-border)] p-4">
             <div>
-              <h2 className="font-bold text-slate-900">Notifications</h2>
-              <p className="text-xs text-slate-500">
+              <h2 className="font-bold text-[var(--color-text)]">Notifications</h2>
+              <p className="text-xs text-[var(--color-text-muted)]">
                 {unreadCount} unread notification{unreadCount === 1 ? "" : "s"}
               </p>
             </div>
@@ -169,7 +170,7 @@ function NotificationDropdown() {
               <button
                 type="button"
                 onClick={handleMarkAllAsRead}
-                className="text-xs font-bold text-slate-600 hover:text-slate-900"
+                className="text-xs font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
               >
                 Mark all read
               </button>
@@ -181,10 +182,10 @@ function NotificationDropdown() {
 
             {!isLoading && notifications.length === 0 ? (
               <div className="p-6 text-center">
-                <p className="text-sm font-semibold text-slate-700">
+                <p className="text-sm font-semibold text-[var(--color-text)]">
                   No notifications yet
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                   Likes, comments, and follows will appear here.
                 </p>
               </div>
@@ -193,12 +194,14 @@ function NotificationDropdown() {
             {notifications.map((notification) => (
               <div
                 key={notification._id}
-                className={`border-b border-slate-100 p-4 ${
-                  notification.isRead ? "bg-white" : "bg-slate-50"
+                className={`border-b border-[var(--color-border)] p-4 ${
+                  notification.isRead
+                    ? "bg-[var(--color-surface)]"
+                    : "bg-[var(--color-surface-muted)]"
                 }`}
               >
                 <div className="flex gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-bold text-slate-700">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary-soft)] text-sm font-bold text-[var(--color-primary)]">
                     {notification.sender?.avatar ? (
                       <img
                         src={notification.sender.avatar}
@@ -211,11 +214,11 @@ function NotificationDropdown() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-5 text-slate-700">
+                    <p className="text-sm leading-5 text-[var(--color-text)]">
                       {notification.message}
                     </p>
 
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                       {new Date(notification.createdAt).toLocaleString()}
                     </p>
 
@@ -223,7 +226,7 @@ function NotificationDropdown() {
                       <button
                         type="button"
                         onClick={() => handleMarkAsRead(notification._id)}
-                        className="mt-2 text-xs font-bold text-slate-700 hover:text-slate-900"
+                        className="mt-2 text-xs font-bold text-[var(--color-primary)] hover:text-[var(--color-primary-hover)]"
                       >
                         Mark as read
                       </button>
@@ -234,7 +237,7 @@ function NotificationDropdown() {
             ))}
           </div>
 
-          <div className="border-t border-slate-100 p-3">
+          <div className="border-t border-[var(--color-border)] p-3">
             <Link to="/notifications" onClick={() => setIsOpen(false)}>
               <Button variant="outline" size="sm" className="w-full">
                 View All Notifications

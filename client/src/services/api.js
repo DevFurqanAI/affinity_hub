@@ -24,7 +24,10 @@ const isAuthPublicRoute = (url = "") => {
   return (
     url.includes("/auth/login") ||
     url.includes("/auth/register") ||
-    url.includes("/auth/refresh")
+    url.includes("/auth/refresh") ||
+    url.includes("/auth/forgot-password") ||
+    url.includes("/auth/verify-reset-otp") ||
+    url.includes("/auth/reset-password")
   );
 };
 

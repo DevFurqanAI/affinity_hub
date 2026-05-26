@@ -90,11 +90,13 @@ function CreateStoryModal({ isOpen, onClose, onStoryCreated }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-xl">
+      <div className="ui-card max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">Create Story</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="text-xl font-bold text-[var(--color-text)]">
+              Create Story
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
               Share a moment for 24 hours.
             </p>
           </div>
@@ -102,7 +104,7 @@ function CreateStoryModal({ isOpen, onClose, onStoryCreated }) {
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-full px-3 py-1 text-xl font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            className="rounded-full px-3 py-1 text-xl font-bold text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]"
           >
             ×
           </button>
@@ -110,11 +112,11 @@ function CreateStoryModal({ isOpen, onClose, onStoryCreated }) {
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           <div>
-            <label className="cursor-pointer block rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:bg-slate-100">
-              <p className="text-sm font-bold text-slate-900">
+            <label className="block cursor-pointer rounded-3xl border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-muted)] p-6 text-center transition hover:bg-[var(--color-primary-soft)]">
+              <p className="text-sm font-bold text-[var(--color-text)]">
                 Choose Image or Video
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                 JPG, PNG, WEBP, MP4, WEBM, or MOV
               </p>
 
@@ -128,7 +130,7 @@ function CreateStoryModal({ isOpen, onClose, onStoryCreated }) {
           </div>
 
           {mediaPreview ? (
-            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
+            <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface-muted)]">
               {mediaType === "image" ? (
                 <img
                   src={mediaPreview}
@@ -148,7 +150,7 @@ function CreateStoryModal({ isOpen, onClose, onStoryCreated }) {
           <div>
             <label
               htmlFor="caption"
-              className="mb-2 block text-sm font-semibold text-slate-700"
+              className="mb-2 block text-sm font-semibold text-[var(--color-text)]"
             >
               Caption
             </label>
@@ -160,10 +162,10 @@ function CreateStoryModal({ isOpen, onClose, onStoryCreated }) {
               rows="3"
               maxLength={300}
               placeholder="Write a short caption..."
-              className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              className="ui-input w-full resize-none rounded-2xl px-4 py-3 text-sm outline-none transition"
             />
 
-            <p className="mt-1 text-right text-xs text-slate-400">
+            <p className="mt-1 text-right text-xs text-[var(--color-text-muted)]">
               {caption.length}/300
             </p>
           </div>

@@ -45,6 +45,65 @@ const authService = {
   resendVerificationOtp: async () => {
     const response = await api.post("/auth/resend-verification-otp", {});
     return response.data;
+  },
+
+  forgotPassword: async (email) => {
+    const response = await api.post("/auth/forgot-password", {
+      email
+    });
+
+    return response.data;
+  },
+
+  verifyPasswordResetOtp: async ({ email, otp }) => {
+    const response = await api.post("/auth/verify-reset-otp", {
+      email,
+      otp
+    });
+
+    return response.data;
+  },
+
+  resetPassword: async ({ email, resetToken, newPassword }) => {
+    const response = await api.post("/auth/reset-password", {
+      email,
+      resetToken,
+      newPassword
+    });
+
+    return response.data;
+  },
+
+  getSecuritySettings: async () => {
+    const response = await api.get("/auth/security-settings");
+    return response.data;
+  },
+
+  linkGoogleAccount: async (credential) => {
+    const response = await api.post("/auth/link/google", {
+      credential
+    });
+
+    return response.data;
+  },
+
+  unlinkGoogleAccount: async () => {
+    const response = await api.delete("/auth/link/google");
+    return response.data;
+  },
+
+  changePassword: async ({
+    currentPassword = "",
+    newPassword,
+    googleCredential = ""
+  }) => {
+    const response = await api.patch("/auth/password", {
+      currentPassword,
+      newPassword,
+      googleCredential
+    });
+
+    return response.data;
   }
 };
 

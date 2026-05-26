@@ -87,7 +87,10 @@ function FeedPage() {
     >
       <StoryBar />
 
-      <CreatePostBox onPostCreated={handlePostCreated} />
+      <CreatePostBox
+        triggerOnly
+        onPostCreated={handlePostCreated}
+      />
 
       <PostList
         posts={posts}

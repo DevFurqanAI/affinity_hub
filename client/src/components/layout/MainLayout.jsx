@@ -1,20 +1,107 @@
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import Navbar from "./Navbar.jsx";
 import Sidebar from "./Sidebar.jsx";
+import SearchDrawer from "../search/SearchDrawer.jsx";
+import NotificationsDrawer from "../notifications/NotificationsDrawer.jsx";
+import CreatePostBox from "../posts/CreatePostBox.jsx";
 
 function MainLayout() {
+  const [activeDrawer, setActiveDrawer] = useState(null);
+
+  const isSearchDrawerOpen = activeDrawer === "search";
+  const isNotificationsDrawerOpen = activeDrawer === "notifications";
+  const isDrawerOpen = Boolean(activeDrawer);
+
+  useEffect(() => {
+    if (!isDrawerOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setActiveDrawer(null);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isDrawerOpen]);
+
+  useEffect(() => {
+    const handleOpenCreatePost = () => {
+      setActiveDrawer(null);
+    };
+
+    window.addEventListener("affinity-open-create-post", handleOpenCreatePost);
+
+    return () => {
+      window.removeEventListener(
+        "affinity-open-create-post",
+        handleOpenCreatePost
+      );
+    };
+  }, []);
+
+  const toggleSearchDrawer = () => {
+    setActiveDrawer((currentDrawer) =>
+      currentDrawer === "search" ? null : "search"
+    );
+  };
+
+  const toggleNotificationsDrawer = () => {
+    setActiveDrawer((currentDrawer) =>
+      currentDrawer === "notifications" ? null : "notifications"
+    );
+  };
+
+  const closeDrawers = () => {
+    setActiveDrawer(null);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="app-shell min-h-screen">
       <Navbar />
 
-      <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <Sidebar />
+      <Sidebar
+        isSearchDrawerOpen={isSearchDrawerOpen}
+        isNotificationsDrawerOpen={isNotificationsDrawerOpen}
+        onSearchToggle={toggleSearchDrawer}
+        onNotificationsToggle={toggleNotificationsDrawer}
+      />
 
-        <main className="min-h-[calc(100vh-96px)] flex-1 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <Outlet />
-        </main>
-      </div>
+      {isDrawerOpen ? (
+        <button
+          type="button"
+          onClick={closeDrawers}
+          aria-label="Close open panel"
+          className="fixed inset-0 z-30 hidden bg-black/55 lg:block"
+        />
+      ) : null}
+
+      <SearchDrawer
+        isOpen={isSearchDrawerOpen}
+        onClose={closeDrawers}
+      />
+
+      <NotificationsDrawer
+        isOpen={isNotificationsDrawerOpen}
+        onClose={closeDrawers}
+      />
+
+      <CreatePostBox modalOnly />
+
+      <main className="min-h-screen min-w-0 pb-16 pt-16 lg:pb-0 lg:pl-18 lg:pt-20">
+        <Outlet />
+      </main>
     </div>
   );
 }

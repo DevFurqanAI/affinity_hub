@@ -115,10 +115,20 @@ export const getStoryFeed = asyncHandler(async (req, res) => {
 
   const userIds = [req.user._id, ...allowedFollowingIds];
 
-  const stories = await Story.find({
-    user: {
+  const activeStoryOwners = await User.find({
+    _id: {
       $in: userIds
     },
+    status: "active"
+  }).select("_id");
+
+  const activeStoryOwnerIds = activeStoryOwners.map((user) => user._id);
+
+  const stories = await Story.find({
+    user: {
+      $in: activeStoryOwnerIds
+    },
+    isDeleted: false,
     expiresAt: {
       $gt: new Date()
     }
@@ -167,6 +177,7 @@ export const viewStory = asyncHandler(async (req, res) => {
 
   const story = await Story.findOne({
     _id: storyId,
+    isDeleted: false,
     expiresAt: {
       $gt: new Date()
     }
@@ -177,6 +188,16 @@ export const viewStory = asyncHandler(async (req, res) => {
   }
 
   const storyOwnerId = story.user?._id || story.user;
+
+  const activeOwner = await User.exists({
+    _id: storyOwnerId,
+    status: "active"
+  });
+
+  if (!activeOwner) {
+    throw new ApiError(404, "Story not found or expired");
+  }
+
   const isOwner = storyOwnerId.toString() === req.user._id.toString();
 
   if (!isOwner) {
@@ -232,7 +253,10 @@ export const getStoryViews = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid story id");
   }
 
-  const story = await Story.findById(storyId);
+  const story = await Story.findOne({
+    _id: storyId,
+    isDeleted: false
+  });
 
   if (!story) {
     throw new ApiError(404, "Story not found");
@@ -267,7 +291,10 @@ export const deleteStory = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid story id");
   }
 
-  const story = await Story.findById(storyId);
+  const story = await Story.findOne({
+    _id: storyId,
+    isDeleted: false
+  });
 
   if (!story) {
     throw new ApiError(404, "Story not found");

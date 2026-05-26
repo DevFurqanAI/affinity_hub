@@ -4,7 +4,7 @@ import { Turnstile } from "react-turnstile";
 
 import Button from "../../components/common/Button.jsx";
 import Input from "../../components/common/Input.jsx";
-import Card from "../../components/common/Card.jsx";
+import AuthShell from "../../components/auth/AuthShell.jsx";
 import GoogleAuthButton from "../../components/auth/GoogleAuthButton.jsx";
 import useAuthStore from "../../store/authStore.js";
 
@@ -53,84 +53,105 @@ function RegisterPage() {
   const isRegisterDisabled = isLoading || !captchaToken;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-900 text-xl font-black text-white">
-            AH
-          </div>
+    <AuthShell
+      eyebrow="Join the Lounge"
+      title="Create your account"
+      description="Start with your secure login details. Your profile and interests come next."
+      footer={
+        <p>
+          Already have an account?{" "}
+          <Link
+            to="/login"
+            className="font-black text-rose-500 transition hover:text-rose-400"
+          >
+            Sign in
+          </Link>
+        </p>
+      }
+    >
+      <div className="mb-6 flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-500">
+            Step 1 of 3
+          </p>
 
-          <h1 className="mt-4 text-3xl font-black text-slate-900">
-            Create Account
-          </h1>
-
-          <p className="mt-2 text-sm text-slate-500">
-            Start with email and password. You will complete your profile after OTP verification.
+          <p className="mt-1 text-xs font-bold text-[var(--color-text)]">
+            Secure account setup
           </p>
         </div>
 
-        <Card>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Input
-              id="email"
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              required
-            />
-
-            <Input
-              id="password"
-              label="Password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Minimum 6 characters"
-              required
-            />
-
-            {turnstileSiteKey ? (
-              <Turnstile
-                sitekey={turnstileSiteKey}
-                onVerify={(token) => setCaptchaToken(token)}
-                onExpire={() => setCaptchaToken("")}
-                onError={() => setCaptchaToken("")}
-              />
-            ) : (
-              <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-700">
-                Turnstile site key is missing. Development CAPTCHA bypass is
-                active.
-              </div>
-            )}
-
-            <Button type="submit" className="w-full" disabled={isRegisterDisabled}>
-              {isLoading ? "Creating..." : "Create Account"}
-            </Button>
-          </form>
-
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              or continue with
-            </span>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-
-          <GoogleAuthButton label="Google signup skips OTP and starts profile setup." />
-
-          <p className="mt-6 text-center text-sm text-slate-500">
-            Already have an account?{" "}
-            <Link to="/login" className="font-bold text-slate-900 hover:underline">
-              Login
-            </Link>
-          </p>
-        </Card>
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-7 rounded-full bg-rose-500" />
+          <span className="h-1.5 w-7 rounded-full bg-[var(--color-border)]" />
+          <span className="h-1.5 w-7 rounded-full bg-[var(--color-border)]" />
+        </div>
       </div>
-    </main>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Input
+          id="email"
+          label="Email Address"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+        />
+
+        <Input
+          id="password"
+          label="Password"
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="Minimum 6 characters"
+          minLength={6}
+          autoComplete="new-password"
+          helper="Use at least 6 characters."
+          required
+        />
+
+        {turnstileSiteKey ? (
+          <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-3">
+            <Turnstile
+              sitekey={turnstileSiteKey}
+              onVerify={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken("")}
+              onError={() => setCaptchaToken("")}
+            />
+          </div>
+        ) : (
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-xs leading-5 text-amber-500">
+            {isDevelopment
+              ? "Development mode: CAPTCHA bypass is active."
+              : "Registration CAPTCHA is not configured. Add the Turnstile site key before accepting registrations."}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          className="w-full !border-0 !bg-gradient-to-r !from-rose-600 !to-amber-500 !text-white hover:brightness-110"
+          disabled={isRegisterDisabled}
+        >
+          {isLoading ? "Creating account..." : "Create Account"}
+        </Button>
+      </form>
+
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-[var(--color-border)]" />
+
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
+          or
+        </span>
+
+        <div className="h-px flex-1 bg-[var(--color-border)]" />
+      </div>
+
+      <GoogleAuthButton label="Google signup skips OTP and continues to profile setup." />
+    </AuthShell>
   );
 }
 

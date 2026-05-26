@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import toast from "react-hot-toast";
 
 import Loader from "../common/Loader.jsx";
@@ -8,6 +14,8 @@ import StoryViewerModal from "./StoryViewerModal.jsx";
 import storyService from "../../services/storyService.js";
 import useAuthStore from "../../store/authStore.js";
 
+const STORY_STATUS_EVENT = "affinity-story-status-changed";
+
 function StoryBar() {
   const currentUser = useAuthStore((state) => state.user);
 
@@ -16,6 +24,8 @@ function StoryBar() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const storiesRef = useRef([]);
 
   const sortedStories = useMemo(() => {
     const currentUserStories = stories.filter(
@@ -29,13 +39,87 @@ function StoryBar() {
     return [...currentUserStories, ...otherStories];
   }, [stories, currentUser?._id]);
 
-  const loadStories = async () => {
+  const storyGroups = useMemo(() => {
+    const groupsByUser = new Map();
+
+    sortedStories.forEach((story) => {
+      const userId = story.user?._id || "unknown";
+      const existingGroup = groupsByUser.get(userId);
+
+      if (existingGroup) {
+        existingGroup.stories.push(story);
+        existingGroup.hasUnviewedStory =
+          existingGroup.hasUnviewedStory || !story.isViewedByMe;
+        return;
+      }
+
+      groupsByUser.set(userId, {
+        userId,
+        story,
+        stories: [story],
+        hasUnviewedStory: !story.isViewedByMe
+      });
+    });
+
+    return Array.from(groupsByUser.values());
+  }, [sortedStories]);
+
+  const broadcastStoryStatuses = useCallback(
+    (nextStories, previousStories = []) => {
+      const ownerIds = new Set();
+
+      [...previousStories, ...nextStories].forEach((story) => {
+        if (story.user?._id) {
+          ownerIds.add(story.user._id.toString());
+        }
+      });
+
+      ownerIds.forEach((ownerId) => {
+        const ownerStories = nextStories.filter(
+          (story) => story.user?._id?.toString() === ownerId
+        );
+
+        const hasActiveStory = ownerStories.length > 0;
+
+        const hasUnviewedStory = ownerStories.some(
+          (story) => !story.isViewedByMe
+        );
+
+        window.dispatchEvent(
+          new CustomEvent(STORY_STATUS_EVENT, {
+            detail: {
+              userId: ownerId,
+              hasActiveStory,
+              hasUnviewedStory
+            }
+          })
+        );
+      });
+    },
+    []
+  );
+
+  const applyStoriesUpdate = useCallback(
+    (nextStories) => {
+      const previousStories = storiesRef.current;
+
+      storiesRef.current = nextStories;
+      setStories(nextStories);
+
+      broadcastStoryStatuses(nextStories, previousStories);
+    },
+    [broadcastStoryStatuses]
+  );
+
+  const loadStories = useCallback(async () => {
     try {
       setIsLoading(true);
 
       const result = await storyService.getStoryFeed();
 
-      setStories(result.data?.stories || []);
+      const fetchedStories = result.data?.stories || [];
+
+      applyStoriesUpdate(fetchedStories);
     } catch (error) {
       const message =
         error.response?.data?.message || "Failed to load stories";
@@ -44,11 +128,11 @@ function StoryBar() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [applyStoriesUpdate]);
 
   useEffect(() => {
     loadStories();
-  }, []);
+  }, [loadStories]);
 
   const handleOpenStory = (storyId) => {
     const index = sortedStories.findIndex((story) => story._id === storyId);
@@ -61,75 +145,95 @@ function StoryBar() {
     setIsViewerOpen(true);
   };
 
-  const handleStoryCreated = (newStory) => {
-    if (!newStory) {
-      return;
-    }
+  const handleOpenStoryGroup = (group) => {
+    const firstUnviewedStory =
+      group.stories.find((story) => !story.isViewedByMe) || group.story;
 
-    setStories((previousStories) => [newStory, ...previousStories]);
+    handleOpenStory(firstUnviewedStory._id);
   };
 
-  const handleStoryViewed = (storyId) => {
-    setStories((previousStories) =>
-      previousStories.map((story) =>
+  const handleStoryCreated = useCallback(
+    (newStory) => {
+      if (!newStory) {
+        return;
+      }
+
+      const storyWithViewState = {
+        ...newStory,
+        isViewedByMe: false
+      };
+
+      const nextStories = [storyWithViewState, ...storiesRef.current];
+
+      applyStoriesUpdate(nextStories);
+    },
+    [applyStoriesUpdate]
+  );
+
+  const handleStoryViewed = useCallback(
+    (storyId) => {
+      const nextStories = storiesRef.current.map((story) =>
         story._id === storyId
           ? {
               ...story,
               isViewedByMe: true
             }
           : story
-      )
-    );
-  };
+      );
 
-  const handleStoryDeleted = (storyId) => {
-    setStories((previousStories) =>
-      previousStories.filter((story) => story._id !== storyId)
-    );
-  };
+      applyStoriesUpdate(nextStories);
+    },
+    [applyStoriesUpdate]
+  );
+
+  const handleStoryDeleted = useCallback(
+    (storyId) => {
+      const nextStories = storiesRef.current.filter(
+        (story) => story._id !== storyId
+      );
+
+      applyStoriesUpdate(nextStories);
+    },
+    [applyStoriesUpdate]
+  );
 
   return (
     <>
-      <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Stories</h2>
-            <p className="text-xs text-slate-500">
-              Share moments that expire after 24 hours.
-            </p>
-          </div>
+      <section className="group/stories relative">
+        <button
+          type="button"
+          onClick={loadStories}
+          disabled={isLoading}
+          className="absolute -right-1 -top-2 z-10 rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-widest text-[var(--color-text-muted)] opacity-0 transition group-hover/stories:opacity-100 hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Refresh
+        </button>
 
-          <button
-            type="button"
-            onClick={loadStories}
-            className="rounded-full px-3 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-          >
-            Refresh
-          </button>
-        </div>
+        {isLoading && stories.length === 0 ? (
+          <Loader text="Loading stories..." />
+        ) : null}
 
-        {isLoading ? <Loader text="Loading stories..." /> : null}
-
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="no-scrollbar mx-1 flex select-none items-center gap-4 overflow-x-auto pb-3 scroll-smooth">
           <StoryCard
             isCreateCard
             currentUser={currentUser}
             onClick={() => setIsCreateOpen(true)}
           />
 
-          {!isLoading && sortedStories.length === 0 ? (
-            <div className="flex min-w-52 items-center rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">
-                No stories yet. Create your first story.
+          {!isLoading && storyGroups.length === 0 ? (
+            <div className="flex min-w-32 items-center px-2 py-3">
+              <p className="text-[10px] font-bold text-[var(--color-text-muted)]">
+                No stories yet.
               </p>
             </div>
           ) : null}
 
-          {sortedStories.map((story) => (
+          {storyGroups.map((group) => (
             <StoryCard
-              key={story._id}
-              story={story}
-              onClick={() => handleOpenStory(story._id)}
+              key={group.userId}
+              story={group.story}
+              hasUnviewedStory={group.hasUnviewedStory}
+              onClick={() => handleOpenStoryGroup(group)}
             />
           ))}
         </div>

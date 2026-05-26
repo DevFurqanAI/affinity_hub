@@ -1,67 +1,82 @@
-function StoryCard({ story, isCreateCard = false, onClick, currentUser }) {
+function StoryCard({
+  story,
+  isCreateCard = false,
+  onClick,
+  currentUser,
+  hasUnviewedStory
+}) {
   const owner = story?.user || currentUser;
   const avatarText = owner?.name?.charAt(0)?.toUpperCase() || "A";
+
+  const shouldShowUnviewedRing =
+    typeof hasUnviewedStory === "boolean"
+      ? hasUnviewedStory
+      : !story?.isViewedByMe;
+
+  const accessibleLabel = isCreateCard
+    ? "Create your story"
+    : `View ${owner?.username || owner?.name || "user"}'s story`;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group w-24 shrink-0 text-left"
+      aria-label={accessibleLabel}
+      title={accessibleLabel}
+      className="group/avatar flex shrink-0 flex-col items-center gap-1.5 text-center transition-transform active:scale-95"
     >
       <div
-        className={`relative h-36 overflow-hidden rounded-3xl border-2 shadow-sm transition group-hover:scale-[1.02] ${
+        className={`relative rounded-full p-[2px] transition-all duration-300 group-hover/avatar:rotate-6 ${
           isCreateCard
-            ? "border-dashed border-slate-300 bg-slate-100"
-            : story?.isViewedByMe
-              ? "border-slate-200 bg-slate-100"
-              : "border-slate-900 bg-slate-200"
+            ? "bg-[var(--color-border-strong)]"
+            : shouldShowUnviewedRing
+              ? "bg-gradient-to-tr from-yellow-400 via-rose-500 to-purple-600"
+              : "bg-neutral-300 dark:bg-zinc-700"
         }`}
       >
-        {isCreateCard ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-2xl font-bold text-white">
-              +
-            </div>
-            <p className="px-2 text-center text-xs font-semibold text-slate-700">
-              Add Story
-            </p>
-          </div>
-        ) : (
-          <>
-            {story?.mediaType === "image" ? (
+        {/* This inner padding creates space between the ring and avatar */}
+        <div className="rounded-full bg-[var(--color-surface)] p-[3px]">
+          <div className="relative h-13 w-13 overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
+            {isCreateCard ? (
+              <>
+                {owner?.avatar ? (
+                  <img
+                    src={owner.avatar}
+                    alt={owner?.name || "Your profile"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs font-black text-[var(--color-text-muted)]">
+                    {avatarText}
+                  </div>
+                )}
+
+                <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-follow)] text-sm font-bold leading-none text-white">
+                  +
+                </span>
+              </>
+            ) : owner?.avatar ? (
               <img
-                src={story.media?.url}
-                alt={story.caption || "Story"}
-                className="h-full w-full object-cover"
+                src={owner.avatar}
+                alt={owner?.name || "Story owner"}
+                className="h-full w-full object-cover transition-all group-hover/avatar:brightness-110"
               />
             ) : (
-              <video
-                src={story?.media?.url}
-                className="h-full w-full object-cover"
-                muted
-              />
+              <div className="flex h-full w-full items-center justify-center text-xs font-black text-[var(--color-text-muted)]">
+                {avatarText}
+              </div>
             )}
-
-            <div className="absolute inset-0 bg-linear-to-t from-slate-950/70 via-transparent to-transparent" />
-
-            <div className="absolute left-2 top-2 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-slate-200 text-xs font-bold text-slate-700">
-              {owner?.avatar ? (
-                <img
-                  src={owner.avatar}
-                  alt={owner.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                avatarText
-              )}
-            </div>
-
-            <p className="absolute bottom-2 left-2 right-2 line-clamp-2 text-xs font-bold text-white">
-              {owner?.username ? `@${owner.username}` : "Story"}
-            </p>
-          </>
-        )}
+          </div>
+        </div>
       </div>
+
+      <p className="max-w-[66px] truncate text-[10px] font-bold leading-tight text-[var(--color-text-muted)]">
+        {isCreateCard
+          ? "Your Story"
+          : owner?.username
+            ? `@${owner.username}`
+            : owner?.name || "Story"}
+      </p>
     </button>
   );
 }

@@ -1,6 +1,8 @@
+import { createHash, randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
 
 import User from "../models/User.model.js";
+import Ban from "../models/Ban.model.js";
 import env from "../config/env.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
@@ -13,7 +15,10 @@ import {
   compareOtp,
   getOtpExpiryDate
 } from "../utils/otp.utils.js";
-import { sendVerificationOtpEmail } from "../utils/email.service.js";
+import {
+  sendVerificationOtpEmail,
+  sendPasswordResetOtpEmail
+} from "../utils/email.service.js";
 import { verifyTurnstileToken } from "../utils/turnstile.service.js";
 import { verifyGoogleCredential } from "../utils/googleAuth.service.js";
 
@@ -24,7 +29,7 @@ const safeUserSelect =
   "_id name username email bio avatar role status isVerified authProvider profileSetupCompleted interestsSetupCompleted followersCount followingCount createdAt updatedAt";
 
 const privateUserOmitSelect =
-  "-password -refreshToken -emailVerificationOtpHash -emailVerificationOtpExpires -emailVerificationOtpAttempts -lastVerificationOtpSentAt -failedLoginAttempts -lockUntil";
+  "-password -refreshToken -emailVerificationOtpHash -emailVerificationOtpExpires -emailVerificationOtpAttempts -lastVerificationOtpSentAt -passwordResetOtpHash -passwordResetOtpExpires -passwordResetOtpAttempts -lastPasswordResetOtpSentAt -passwordResetTokenHash -passwordResetTokenExpires -failedLoginAttempts -lockUntil";
 
 const sendAuthResponse = async (res, user, message, statusCode = 200) => {
   const { accessToken, refreshToken } = generateAuthTokens(user._id);
@@ -59,6 +64,40 @@ const createAndSendVerificationOtp = async (user) => {
   await user.save({ validateBeforeSave: false });
 
   await sendVerificationOtpEmail({
+    to: user.email,
+    name: user.name,
+    otp
+  });
+};
+
+const PASSWORD_RESET_GENERIC_MESSAGE =
+  "If an eligible account exists for this email, a password reset OTP has been sent.";
+
+const hashPasswordResetToken = (token) => {
+  return createHash("sha256").update(token).digest("hex");
+};
+
+const createAndSendPasswordResetOtp = async (user) => {
+  const otp = generateOtp();
+
+  user.passwordResetOtpHash = await hashOtp(otp);
+  user.passwordResetOtpExpires = getOtpExpiryDate();
+  user.passwordResetOtpAttempts = 0;
+  user.lastPasswordResetOtpSentAt = new Date();
+
+  /*
+  |--------------------------------------------------------------------------
+  | Invalidate Previous Verified Reset Sessions
+  |--------------------------------------------------------------------------
+  | Requesting a new OTP invalidates any previously issued reset token.
+  |--------------------------------------------------------------------------
+  */
+  user.passwordResetTokenHash = null;
+  user.passwordResetTokenExpires = null;
+
+  await user.save({ validateBeforeSave: false });
+
+  await sendPasswordResetOtpEmail({
     to: user.email,
     name: user.name,
     otp
@@ -118,6 +157,82 @@ const safelyCompleteOldUserFlags = async (user) => {
   }
 };
 
+const isGoogleConnected = (user) => {
+  if (user.googleAccountLinked !== undefined) {
+    return user.googleAccountLinked;
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Legacy Compatibility
+  |--------------------------------------------------------------------------
+  | Before the dedicated flag existed, successful Google auth stored a
+  | providerId. Existing Google-created users also have authProvider=google.
+  */
+  return Boolean(user.providerId) || user.authProvider === "google";
+};
+
+const getSecuritySettingsPayload = async (userId) => {
+  const user = await User.findById(userId).select(
+    "email authProvider providerId googleAccountLinked isVerified status createdAt lastLogin +password"
+  );
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const hasPassword = Boolean(user.password);
+  const isGoogleLinked = isGoogleConnected(user);
+
+  return {
+    email: user.email,
+    authProvider: user.authProvider,
+    isVerified: user.isVerified,
+    status: user.status,
+    createdAt: user.createdAt,
+    lastLogin: user.lastLogin,
+    hasPassword,
+    isGoogleLinked,
+    canDisconnectGoogle: isGoogleLinked && hasPassword,
+    canCreatePassword: isGoogleLinked && !hasPassword
+  };
+};
+
+const restoreExpiredBanStatus = async (user) => {
+  if (user.status !== "banned") {
+    return false;
+  }
+
+  const activeBan = await Ban.findOne({
+    user: user._id,
+    isActive: true
+  }).sort({ createdAt: -1 });
+
+  if (!activeBan || !activeBan.expiresAt) {
+    return false;
+  }
+
+  if (activeBan.expiresAt > new Date()) {
+    return false;
+  }
+
+  activeBan.isActive = false;
+  activeBan.endType = "expired";
+  activeBan.endedAt = new Date();
+
+  await activeBan.save({ validateBeforeSave: false });
+
+  const restorableStatuses = ["active", "suspended", "deactivated"];
+
+  user.status = restorableStatuses.includes(activeBan.previousStatus)
+    ? activeBan.previousStatus
+    : "active";
+
+  await user.save({ validateBeforeSave: false });
+
+  return true;
+};
+
 export const registerUser = asyncHandler(async (req, res) => {
   const { email, password, captchaToken } = req.body;
 
@@ -166,10 +281,6 @@ export const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid email or password");
   }
 
-  if (user.status === "suspended") {
-    throw new ApiError(403, "Your account is suspended");
-  }
-
   if (user.isAccountLocked()) {
     throw new ApiError(
       423,
@@ -199,12 +310,40 @@ export const loginUser = asyncHandler(async (req, res) => {
   }
 
   await safelyCompleteOldUserFlags(user);
+  await restoreExpiredBanStatus(user);
+
+  if (user.status === "suspended") {
+    throw new ApiError(403, "Your account is suspended");
+  }
 
   user.failedLoginAttempts = 0;
   user.lockUntil = null;
   user.lastLogin = new Date();
 
-  return sendAuthResponse(res, user, "Login successful", 200);
+  if (user.status === "banned") {
+    return sendAuthResponse(
+      res,
+      user,
+      "Your account is banned. You may submit an appeal.",
+      200
+    );
+  }
+
+  const wasDeactivated = user.status === "deactivated";
+
+  if (wasDeactivated) {
+    user.status = "active";
+    user.deactivatedAt = null;
+  }
+
+  return sendAuthResponse(
+    res,
+    user,
+    wasDeactivated
+      ? "Account reactivated successfully. Welcome back."
+      : "Login successful",
+    200
+  );
 });
 
 export const googleAuth = asyncHandler(async (req, res) => {
@@ -233,6 +372,7 @@ export const googleAuth = asyncHandler(async (req, res) => {
       avatar: googleUser.avatar,
       authProvider: "google",
       providerId: googleUser.providerId,
+      googleAccountLinked: true,
       isVerified: true,
       profileSetupCompleted: false,
       interestsSetupCompleted: false,
@@ -242,8 +382,17 @@ export const googleAuth = asyncHandler(async (req, res) => {
     return sendAuthResponse(res, user, "Google signup successful", 201);
   }
 
+  await restoreExpiredBanStatus(user);
+
   if (user.status === "suspended") {
     throw new ApiError(403, "Your account is suspended");
+  }
+
+  if (user.googleAccountLinked === false) {
+    throw new ApiError(
+      403,
+      "Google sign-in has been disconnected for this account. Sign in with your password and reconnect Google from Settings."
+    );
   }
 
   if (user.providerId && user.providerId !== googleUser.providerId) {
@@ -253,9 +402,26 @@ export const googleAuth = asyncHandler(async (req, res) => {
     );
   }
 
+  /*
+  |--------------------------------------------------------------------------
+  | Banned Account Restriction
+  |--------------------------------------------------------------------------
+  | A banned local account cannot connect a new Google method while banned.
+  | Only an already-linked Google identity can access the appeal screen.
+  |--------------------------------------------------------------------------
+  */
+  if (user.status === "banned" && !user.providerId) {
+    throw new ApiError(
+      403,
+      "Your account is banned. Sign in with email and password to submit an appeal."
+    );
+  }
+
   if (!user.providerId) {
     user.providerId = googleUser.providerId;
   }
+
+  user.googleAccountLinked = true;
 
   if (!user.authProvider) {
     user.authProvider = "local";
@@ -271,7 +437,258 @@ export const googleAuth = asyncHandler(async (req, res) => {
   await safelyCompleteOldUserFlags(user);
   await user.save({ validateBeforeSave: false });
 
-  return sendAuthResponse(res, user, "Google login successful", 200);
+  if (user.status === "banned") {
+    return sendAuthResponse(
+      res,
+      user,
+      "Your account is banned. You may submit an appeal.",
+      200
+    );
+  }
+
+  const wasDeactivated = user.status === "deactivated";
+
+  if (wasDeactivated) {
+    user.status = "active";
+    user.deactivatedAt = null;
+
+    await user.save({ validateBeforeSave: false });
+  }
+
+  return sendAuthResponse(
+    res,
+    user,
+    wasDeactivated
+      ? "Account reactivated successfully. Welcome back."
+      : "Google login successful",
+    200
+  );
+});
+
+export const getSecuritySettings = asyncHandler(async (req, res) => {
+  const security = await getSecuritySettingsPayload(req.user._id);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        security
+      },
+      "Security settings fetched successfully"
+    )
+  );
+});
+
+export const linkGoogleAccount = asyncHandler(async (req, res) => {
+  const { credential } = req.body;
+
+  const currentUser = await User.findById(req.user._id).select(
+    "+password +refreshToken"
+  );
+
+  if (!currentUser) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const googleUser = await verifyGoogleCredential(credential);
+
+  if (!googleUser.emailVerified) {
+    throw new ApiError(403, "Google email is not verified");
+  }
+
+  if (googleUser.email.toLowerCase() !== currentUser.email.toLowerCase()) {
+    throw new ApiError(
+      409,
+      "Please use the Google account with the same email address as your Affinity Hub account"
+    );
+  }
+
+  const linkedToAnotherUser = await User.findOne({
+    _id: {
+      $ne: currentUser._id
+    },
+    providerId: googleUser.providerId,
+    googleAccountLinked: {
+      $ne: false
+    }
+  }).select("_id");
+
+  if (linkedToAnotherUser) {
+    throw new ApiError(
+      409,
+      "This Google account is already linked to another Affinity Hub account"
+    );
+  }
+
+  if (
+    currentUser.providerId &&
+    currentUser.providerId !== googleUser.providerId &&
+    isGoogleConnected(currentUser)
+  ) {
+    throw new ApiError(
+      409,
+      "A different Google account is already linked to this account"
+    );
+  }
+
+  currentUser.providerId = googleUser.providerId;
+  currentUser.googleAccountLinked = true;
+
+  await currentUser.save({ validateBeforeSave: false });
+
+  const security = await getSecuritySettingsPayload(currentUser._id);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        security
+      },
+      "Google account connected successfully"
+    )
+  );
+});
+
+export const unlinkGoogleAccount = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select("+password");
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (!isGoogleConnected(user)) {
+    throw new ApiError(409, "Google account is not connected");
+  }
+
+  if (!user.password) {
+    throw new ApiError(
+      400,
+      "Create a password before disconnecting your only sign-in method"
+    );
+  }
+
+  user.providerId = null;
+  user.googleAccountLinked = false;
+
+  /*
+  |--------------------------------------------------------------------------
+  | Google-only Account Converted to Local Login
+  |--------------------------------------------------------------------------
+  | Once a Google-created account has a password and disconnects Google,
+  | email/password becomes its available authentication method.
+  */
+  if (user.authProvider === "google") {
+    user.authProvider = "local";
+  }
+
+  await user.save({ validateBeforeSave: false });
+
+  const security = await getSecuritySettingsPayload(user._id);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        security
+      },
+      "Google account disconnected successfully"
+    )
+  );
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const {
+    currentPassword = "",
+    newPassword,
+    googleCredential
+  } = req.body;
+
+  const user = await User.findById(req.user._id).select(
+    "+password +refreshToken"
+  );
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const hasExistingPassword = Boolean(user.password);
+
+  if (hasExistingPassword) {
+    if (!currentPassword) {
+      throw new ApiError(400, "Current password is required");
+    }
+
+    const isCurrentPasswordCorrect = await user.comparePassword(
+      currentPassword
+    );
+
+    if (!isCurrentPasswordCorrect) {
+      throw new ApiError(401, "Current password is incorrect");
+    }
+  } else {
+    if (!isGoogleConnected(user)) {
+      throw new ApiError(
+        400,
+        "A connected Google account is required to create a password"
+      );
+    }
+
+    if (!googleCredential) {
+      throw new ApiError(
+        400,
+        "Verify your Google account before creating a password"
+      );
+    }
+
+    const googleUser = await verifyGoogleCredential(googleCredential);
+
+    if (!googleUser.emailVerified) {
+      throw new ApiError(403, "Google email is not verified");
+    }
+
+    if (
+      googleUser.email.toLowerCase() !== user.email.toLowerCase() ||
+      googleUser.providerId !== user.providerId
+    ) {
+      throw new ApiError(
+        403,
+        "Google verification does not match your connected account"
+      );
+    }
+  }
+
+  user.password = newPassword;
+
+  await user.save();
+
+  /*
+  |--------------------------------------------------------------------------
+  | Rotate Auth Tokens After Password Update
+  |--------------------------------------------------------------------------
+  | This keeps the active Settings session usable while invalidating the
+  | previous stored refresh token.
+  */
+  const { accessToken, refreshToken } = generateAuthTokens(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save({ validateBeforeSave: false });
+
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+
+  const security = await getSecuritySettingsPayload(user._id);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        security,
+        accessToken
+      },
+      hasExistingPassword
+        ? "Password changed successfully"
+        : "Password created successfully"
+    )
+  );
 });
 
 export const logoutUser = asyncHandler(async (req, res) => {
@@ -318,8 +735,17 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid refresh token");
   }
 
+  await restoreExpiredBanStatus(user);
+
   if (user.status === "suspended") {
     throw new ApiError(403, "Your account is suspended");
+  }
+
+  if (user.status === "deactivated") {
+    throw new ApiError(
+      403,
+      "Your account is deactivated. Sign in again to reactivate it."
+    );
   }
 
   if (incomingRefreshToken !== user.refreshToken) {
@@ -474,4 +900,199 @@ export const resendVerificationOtp = asyncHandler(async (req, res) => {
       "Verification OTP sent successfully"
     )
   );
+});
+
+/*
+|--------------------------------------------------------------------------
+| POST /api/auth/forgot-password
+|--------------------------------------------------------------------------
+| Public route. Sends OTP only for eligible password-based accounts.
+| Response is intentionally generic to avoid exposing registered emails.
+|--------------------------------------------------------------------------
+*/
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({
+    email
+  }).select("+password +lastPasswordResetOtpSentAt");
+
+  /*
+  |--------------------------------------------------------------------------
+  | Eligible Accounts
+  |--------------------------------------------------------------------------
+  | - Must exist
+  | - Must already have password sign-in available
+  | - Local unverified users should complete original email verification
+  |   instead of starting password recovery.
+  |--------------------------------------------------------------------------
+  */
+  if (!user || !user.password || !user.isVerified) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, PASSWORD_RESET_GENERIC_MESSAGE));
+  }
+
+  if (user.lastPasswordResetOtpSentAt) {
+    const elapsedSeconds =
+      (Date.now() - user.lastPasswordResetOtpSentAt.getTime()) / 1000;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Quiet Cooldown
+    |--------------------------------------------------------------------------
+    | Do not reveal whether a registered account exists by changing the
+    | response message during resend cooldown.
+    |--------------------------------------------------------------------------
+    */
+    if (elapsedSeconds < env.otpResendCooldownSeconds) {
+      return res
+        .status(200)
+        .json(new ApiResponse(200, null, PASSWORD_RESET_GENERIC_MESSAGE));
+    }
+  }
+
+  await createAndSendPasswordResetOtp(user);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, PASSWORD_RESET_GENERIC_MESSAGE));
+});
+
+/*
+|--------------------------------------------------------------------------
+| POST /api/auth/verify-reset-otp
+|--------------------------------------------------------------------------
+| Public route. Valid OTP returns a one-time reset token.
+|--------------------------------------------------------------------------
+*/
+export const verifyPasswordResetOtp = asyncHandler(async (req, res) => {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({
+    email
+  }).select(
+    "+password +passwordResetOtpHash +passwordResetOtpExpires +passwordResetOtpAttempts"
+  );
+
+  if (
+    !user ||
+    !user.password ||
+    !user.passwordResetOtpHash ||
+    !user.passwordResetOtpExpires
+  ) {
+    throw new ApiError(400, "Invalid or expired password reset OTP");
+  }
+
+  if (user.passwordResetOtpExpires < new Date()) {
+    throw new ApiError(
+      400,
+      "Password reset OTP has expired. Please request a new OTP."
+    );
+  }
+
+  if (user.passwordResetOtpAttempts >= env.otpMaxAttempts) {
+    throw new ApiError(
+      429,
+      "Too many invalid OTP attempts. Please request a new OTP."
+    );
+  }
+
+  const isOtpCorrect = await compareOtp(otp, user.passwordResetOtpHash);
+
+  if (!isOtpCorrect) {
+    user.passwordResetOtpAttempts += 1;
+
+    await user.save({ validateBeforeSave: false });
+
+    throw new ApiError(400, "Invalid password reset OTP");
+  }
+
+  const resetToken = randomBytes(32).toString("hex");
+
+  user.passwordResetOtpHash = null;
+  user.passwordResetOtpExpires = null;
+  user.passwordResetOtpAttempts = 0;
+  user.passwordResetTokenHash = hashPasswordResetToken(resetToken);
+  user.passwordResetTokenExpires = getOtpExpiryDate();
+
+  await user.save({ validateBeforeSave: false });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        resetToken
+      },
+      "OTP verified successfully. You may now set a new password."
+    )
+  );
+});
+
+/*
+|--------------------------------------------------------------------------
+| POST /api/auth/reset-password
+|--------------------------------------------------------------------------
+| Public route. Consumes one-time reset token and invalidates refresh session.
+|--------------------------------------------------------------------------
+*/
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, resetToken, newPassword } = req.body;
+
+  const user = await User.findOne({
+    email
+  }).select(
+    "+passwordResetTokenHash +passwordResetTokenExpires +refreshToken"
+  );
+
+  if (
+    !user ||
+    !user.passwordResetTokenHash ||
+    !user.passwordResetTokenExpires
+  ) {
+    throw new ApiError(400, "Password reset session is invalid or expired");
+  }
+
+  if (user.passwordResetTokenExpires < new Date()) {
+    throw new ApiError(
+      400,
+      "Password reset session has expired. Please request a new OTP."
+    );
+  }
+
+  const incomingTokenHash = hashPasswordResetToken(resetToken);
+
+  if (incomingTokenHash !== user.passwordResetTokenHash) {
+    throw new ApiError(400, "Password reset session is invalid or expired");
+  }
+
+  user.password = newPassword;
+
+  /*
+  |--------------------------------------------------------------------------
+  | Clear Security State
+  |--------------------------------------------------------------------------
+  | Status is intentionally not changed here:
+  | - banned stays banned
+  | - suspended stays suspended
+  | - deactivated reactivates only after successful future login
+  |--------------------------------------------------------------------------
+  */
+  user.passwordResetOtpHash = null;
+  user.passwordResetOtpExpires = null;
+  user.passwordResetOtpAttempts = 0;
+  user.lastPasswordResetOtpSentAt = null;
+  user.passwordResetTokenHash = null;
+  user.passwordResetTokenExpires = null;
+  user.failedLoginAttempts = 0;
+  user.lockUntil = null;
+  user.refreshToken = null;
+
+  await user.save();
+
+  res.clearCookie("refreshToken", cookieOptions);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Password reset successfully. Please sign in."));
 });

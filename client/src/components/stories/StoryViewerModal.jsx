@@ -288,13 +288,13 @@ function StoryViewerModal({
         ) : null}
 
         {isViewsOpen ? (
-          <div className="absolute bottom-0 left-0 right-0 z-30 max-h-[55%] overflow-y-auto rounded-t-3xl bg-white p-5">
+          <div className="absolute bottom-0 left-0 right-0 z-30 max-h-[55%] overflow-y-auto rounded-t-3xl bg-[var(--color-surface)] p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-bold text-[var(--color-text)]">
                   Story Viewers
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--color-text-muted)]">
                   People who viewed this story.
                 </p>
               </div>
@@ -302,7 +302,7 @@ function StoryViewerModal({
               <button
                 type="button"
                 onClick={() => setIsViewsOpen(false)}
-                className="rounded-full px-3 py-1 text-xl font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                className="rounded-full px-3 py-1 text-xl font-bold text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]"
               >
                 ×
               </button>
@@ -312,7 +312,7 @@ function StoryViewerModal({
               {isViewsLoading ? <Loader text="Loading viewers..." /> : null}
 
               {!isViewsLoading && views.length === 0 ? (
-                <p className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500">
+                <p className="rounded-2xl bg-[var(--color-surface-muted)] p-4 text-center text-sm text-[var(--color-text-muted)]">
                   No views yet.
                 </p>
               ) : null}
@@ -326,9 +326,9 @@ function StoryViewerModal({
                     return (
                       <div
                         key={view._id}
-                        className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3"
+                        className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-muted)] p-3"
                       >
-                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-bold text-slate-700">
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary-soft)] text-sm font-bold text-[var(--color-primary)]">
                           {viewer?.avatar ? (
                             <img
                               src={viewer.avatar}
@@ -341,10 +341,10 @@ function StoryViewerModal({
                         </div>
 
                         <div>
-                          <p className="text-sm font-bold text-slate-900">
+                          <p className="text-sm font-bold text-[var(--color-text)]">
                             {viewer?.name}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-[var(--color-text-muted)]">
                             @{viewer?.username}
                           </p>
                         </div>

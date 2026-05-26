@@ -27,6 +27,10 @@ function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
+  if (user?.status === "banned") {
+    return <Navigate to="/banned-account" replace />;
+  }
+
   const currentPath = location.pathname;
 
   if (needsEmailVerification(user) && currentPath !== "/verify-email") {

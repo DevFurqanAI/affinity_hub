@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 import User from "../models/User.model.js";
-import Block from "../models/Block.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
@@ -10,6 +9,7 @@ import {
   getBlockedUserIdsForViewer,
   hasBlockRelation
 } from "../utils/block.helpers.js";
+import { addStoryStatusToUsers } from "../utils/storyStatus.helpers.js";
 
 const safeUserSelect =
   "name username bio avatar role status isVerified followersCount followingCount createdAt updatedAt";
@@ -174,11 +174,16 @@ export const getFollowSuggestions = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .limit(10);
 
+  const suggestionsWithStoryStatus = await addStoryStatusToUsers(
+    suggestions,
+    req.user._id
+  );
+
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        suggestions
+        suggestions: suggestionsWithStoryStatus
       },
       "Follow suggestions fetched successfully"
     )
@@ -209,12 +214,17 @@ export const getUserFollowers = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
+  const followersWithStoryStatus = await addStoryStatusToUsers(
+    user.followers,
+    req.user._id
+  );
+
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        followers: user.followers,
-        followersCount: user.followers.length
+        followers: followersWithStoryStatus,
+        followersCount: followersWithStoryStatus.length
       },
       "Followers fetched successfully"
     )
@@ -245,12 +255,17 @@ export const getUserFollowing = asyncHandler(async (req, res) => {
     throw new ApiError(404, "User not found");
   }
 
+  const followingWithStoryStatus = await addStoryStatusToUsers(
+    user.following,
+    req.user._id
+  );
+
   return res.status(200).json(
     new ApiResponse(
       200,
       {
-        following: user.following,
-        followingCount: user.following.length
+        following: followingWithStoryStatus,
+        followingCount: followingWithStoryStatus.length
       },
       "Following fetched successfully"
     )

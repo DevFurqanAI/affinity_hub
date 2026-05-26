@@ -1,7 +1,11 @@
 import { Router } from "express";
 
 import validate from "../middlewares/validate.middleware.js";
-import { verifyJWTAllowUnverified } from "../middlewares/auth.middleware.js";
+import {
+  verifyJWT,
+  verifyJWTAllowUnverified,
+  verifyJWTAllowBanned
+} from "../middlewares/auth.middleware.js";
 import {
   registerUser,
   loginUser,
@@ -10,14 +14,26 @@ import {
   refreshAccessToken,
   getCurrentUser,
   verifyEmailOtp,
-  resendVerificationOtp
+  resendVerificationOtp,
+  forgotPassword,
+  verifyPasswordResetOtp,
+  resetPassword,
+  getSecuritySettings,
+  linkGoogleAccount,
+  unlinkGoogleAccount,
+  changePassword
 } from "../controllers/auth.controller.js";
 import {
   registerValidationSchema,
   loginValidationSchema,
   googleAuthValidationSchema,
   verifyEmailValidationSchema,
-  resendVerificationOtpValidationSchema
+  resendVerificationOtpValidationSchema,
+  forgotPasswordValidationSchema,
+  verifyPasswordResetOtpValidationSchema,
+  resetPasswordValidationSchema,
+  linkGoogleAccountValidationSchema,
+  changePasswordValidationSchema
 } from "../validations/auth.validation.js";
 
 const router = Router();
@@ -38,6 +54,24 @@ router.post("/logout", logoutUser);
 
 router.post("/refresh", refreshAccessToken);
 
+router.post(
+  "/forgot-password",
+  validate(forgotPasswordValidationSchema),
+  forgotPassword
+);
+
+router.post(
+  "/verify-reset-otp",
+  validate(verifyPasswordResetOtpValidationSchema),
+  verifyPasswordResetOtp
+);
+
+router.post(
+  "/reset-password",
+  validate(resetPasswordValidationSchema),
+  resetPassword
+);
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated but Unverified-Allowed Routes
@@ -47,7 +81,7 @@ router.post("/refresh", refreshAccessToken);
 | - verifying email OTP
 | - resending OTP
 */
-router.get("/me", verifyJWTAllowUnverified, getCurrentUser);
+router.get("/me", verifyJWTAllowBanned, getCurrentUser);
 
 router.post(
   "/verify-email",
@@ -61,6 +95,31 @@ router.post(
   verifyJWTAllowUnverified,
   validate(resendVerificationOtpValidationSchema),
   resendVerificationOtp
+);
+
+/*
+|--------------------------------------------------------------------------
+| Authenticated Account Security Routes
+|--------------------------------------------------------------------------
+| These endpoints are used from Settings after normal onboarding and
+| verification are complete.
+*/
+router.get("/security-settings", verifyJWT, getSecuritySettings);
+
+router.post(
+  "/link/google",
+  verifyJWT,
+  validate(linkGoogleAccountValidationSchema),
+  linkGoogleAccount
+);
+
+router.delete("/link/google", verifyJWT, unlinkGoogleAccount);
+
+router.patch(
+  "/password",
+  verifyJWT,
+  validate(changePasswordValidationSchema),
+  changePassword
 );
 
 export default router;

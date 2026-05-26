@@ -2,7 +2,11 @@ import { Navigate, Outlet } from "react-router-dom";
 
 import Loader from "../components/common/Loader.jsx";
 import useAuthStore from "../store/authStore.js";
-import { getNextOnboardingPath } from "../utils/onboarding.js";
+import {
+  needsEmailVerification,
+  needsProfileSetup,
+  needsInterestsSetup
+} from "../utils/onboarding.js";
 
 function PublicOnlyRoute() {
   const user = useAuthStore((state) => state.user);
@@ -11,17 +15,37 @@ function PublicOnlyRoute() {
 
   if (isAuthChecking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Loader text="Checking authentication..." />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface)]">
+        <Loader text="Checking session..." />
       </div>
     );
   }
 
-  if (isAuthenticated) {
-    return <Navigate to={getNextOnboardingPath(user)} replace />;
+  if (!isAuthenticated || !user) {
+    return <Outlet />;
   }
 
-  return <Outlet />;
+  if (user.status === "banned") {
+    return <Navigate to="/banned-account" replace />;
+  }
+
+  if (needsEmailVerification(user)) {
+    return <Navigate to="/verify-email" replace />;
+  }
+
+  if (needsProfileSetup(user)) {
+    return <Navigate to="/complete-profile" replace />;
+  }
+
+  if (needsInterestsSetup(user)) {
+    return <Navigate to="/choose-interests" replace />;
+  }
+
+  if (user.role === "admin") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <Navigate to="/home" replace />;
 }
 
 export default PublicOnlyRoute;

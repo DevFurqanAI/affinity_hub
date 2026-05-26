@@ -1,16 +1,37 @@
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-import Button from "../common/Button.jsx";
 import Loader from "../common/Loader.jsx";
 import CommentItem from "./CommentItem.jsx";
 import commentService from "../../services/commentService.js";
 import useAuthStore from "../../store/authStore.js";
 
-const PAGE_LIMIT = 10;
 const COMMENT_LIMIT = 10;
 
-function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChange }) {
+function SendIcon({ className = "" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M22 2 11 13" />
+      <path d="m22 2-7 20-4-9-9-4Z" />
+    </svg>
+  );
+}
+
+function CommentSection({
+  postId,
+  initialCommentsCount = 0,
+  onCommentsCountChange,
+  onCommentCountChange
+}) {
   const user = useAuthStore((state) => state.user);
 
   const [comments, setComments] = useState([]);
@@ -25,12 +46,20 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
+  useEffect(() => {
+    setCommentsCount(initialCommentsCount);
+  }, [initialCommentsCount]);
+
   const loadComments = useCallback(
     async (page = 1, shouldReplace = true) => {
       try {
         setIsLoading(true);
 
-        const result = await commentService.getComments(postId, page, PAGE_LIMIT);
+        const result = await commentService.getComments(
+          postId,
+          page,
+          COMMENT_LIMIT
+        );
 
         const newComments = result.data?.comments || [];
         const newPagination = result.data?.pagination;
@@ -39,7 +68,13 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
           shouldReplace ? newComments : [...previousComments, ...newComments]
         );
 
-        setPagination(newPagination);
+        if (newPagination) {
+          setPagination(newPagination);
+
+          if (typeof newPagination.totalComments === "number") {
+            setCommentsCount(newPagination.totalComments);
+          }
+        }
       } catch (error) {
         const message =
           error.response?.data?.message || "Failed to load comments";
@@ -53,6 +88,8 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
   );
 
   useEffect(() => {
+    setComments([]);
+    setContent("");
     loadComments(1, true);
   }, [loadComments]);
 
@@ -70,12 +107,22 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
       const result = await commentService.createComment(postId, content);
 
       const newComment = result.data?.comment;
-      const newCommentsCount = result.data?.commentsCount;
+      const serverCommentsCount = result.data?.commentsCount;
 
-      setComments((previousComments) => [newComment, ...previousComments]);
+      const newCommentsCount =
+        typeof serverCommentsCount === "number"
+          ? serverCommentsCount
+          : commentsCount + 1;
+
+      if (newComment) {
+        setComments((previousComments) => [newComment, ...previousComments]);
+      }
+
       setContent("");
       setCommentsCount(newCommentsCount);
+
       onCommentsCountChange?.(newCommentsCount);
+      onCommentCountChange?.(newCommentsCount);
 
       setPagination((previousPagination) => ({
         ...previousPagination,
@@ -94,6 +141,10 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
   };
 
   const handleCommentUpdated = (updatedComment) => {
+    if (!updatedComment?._id) {
+      return;
+    }
+
     setComments((previousComments) =>
       previousComments.map((comment) =>
         comment._id === updatedComment._id ? updatedComment : comment
@@ -101,13 +152,23 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
     );
   };
 
-  const handleCommentDeleted = ({ commentId, commentsCount: newCommentsCount }) => {
+  const handleCommentDeleted = ({
+    commentId,
+    commentsCount: serverCommentsCount
+  }) => {
+    const newCommentsCount =
+      typeof serverCommentsCount === "number"
+        ? serverCommentsCount
+        : Math.max(commentsCount - 1, 0);
+
     setComments((previousComments) =>
       previousComments.filter((comment) => comment._id !== commentId)
     );
 
     setCommentsCount(newCommentsCount);
+
     onCommentsCountChange?.(newCommentsCount);
+    onCommentCountChange?.(newCommentsCount);
 
     setPagination((previousPagination) => ({
       ...previousPagination,
@@ -117,6 +178,7 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
 
   const handleLoadMore = () => {
     const nextPage = pagination.page + 1;
+
     loadComments(nextPage, false);
   };
 
@@ -128,17 +190,28 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
   const avatarText = user?.name?.charAt(0)?.toUpperCase() || "A";
 
   return (
-    <section className="mt-5 border-t border-slate-100 pt-5">
-      <h3 className="text-sm font-bold text-slate-900">
-        Comments ({commentsCount || 0})
-      </h3>
+    <section className="bg-white px-3.5 pb-4 pt-3 dark:bg-black">
+      {/* Divider / Heading */}
+      <div className="mb-3 flex items-center justify-between border-t border-neutral-100 pt-3 dark:border-zinc-900">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 dark:text-zinc-600">
+          Comments
+        </h3>
 
-      <form onSubmit={handleCreateComment} className="mt-4 flex items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-bold text-slate-700">
+        <span className="text-[10px] font-bold text-neutral-400 dark:text-zinc-600">
+          {commentsCount || 0}
+        </span>
+      </div>
+
+      {/* New Comment Composer */}
+      <form
+        onSubmit={handleCreateComment}
+        className="flex items-start gap-2.5 border-b border-neutral-100 pb-3 dark:border-zinc-900"
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-100 text-[11px] font-black text-neutral-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
           {user?.avatar ? (
             <img
               src={user.avatar}
-              alt={user.name}
+              alt={user?.name || "Profile"}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -146,61 +219,81 @@ function CommentSection({ postId, initialCommentsCount = 0, onCommentsCountChang
           )}
         </div>
 
-        <div className="flex-1 space-y-3">
-          <textarea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            rows="2"
-            maxLength={500}
-            placeholder="Write a comment..."
-            className="w-full resize-none rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
-          />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-end gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 transition focus-within:border-rose-500 dark:border-zinc-800 dark:bg-zinc-950">
+            <textarea
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              rows="1"
+              maxLength={500}
+              disabled={isCreating}
+              placeholder="Add a comment..."
+              className="min-h-[28px] flex-1 resize-none bg-transparent py-1 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 disabled:opacity-60 dark:text-zinc-100 dark:placeholder:text-zinc-600"
+            />
 
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-slate-400">{content.length}/500</p>
-
-            <Button type="submit" size="sm" disabled={isCreating}>
-              {isCreating ? "Posting..." : "Comment"}
-            </Button>
+            <button
+              type="submit"
+              disabled={isCreating || !content.trim()}
+              aria-label="Post comment"
+              className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0095f6] text-white transition hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-neutral-200 disabled:text-neutral-400 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-600"
+            >
+              <SendIcon className="h-4 w-4" />
+            </button>
           </div>
+
+          {content.length > 0 ? (
+            <p className="mt-1.5 text-right text-[10px] font-bold text-neutral-400 dark:text-zinc-600">
+              {content.length}/500
+            </p>
+          ) : null}
         </div>
       </form>
 
-      <div className="mt-5 space-y-3">
+      {/* Comment Thread */}
+      <div className="mt-3">
         {isLoading && comments.length === 0 ? (
           <Loader text="Loading comments..." />
         ) : null}
 
         {!isLoading && comments.length === 0 ? (
-          <p className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500">
-            No comments yet. Be the first to comment.
-          </p>
+          <div className="py-6 text-center">
+            <p className="text-xs font-bold text-neutral-500 dark:text-zinc-500">
+              No comments yet
+            </p>
+
+            <p className="mt-1 text-[11px] text-neutral-400 dark:text-zinc-600">
+              Start the conversation.
+            </p>
+          </div>
         ) : null}
 
-        {comments.map((comment) => (
-          <CommentItem
-            key={comment._id}
-            comment={comment}
-            onCommentUpdated={handleCommentUpdated}
-            onCommentDeleted={handleCommentDeleted}
-          />
-        ))}
+        {comments.length > 0 ? (
+          <div className="divide-y divide-neutral-100 dark:divide-zinc-900">
+            {comments.map((comment) => (
+              <CommentItem
+                key={comment._id}
+                comment={comment}
+                onCommentUpdated={handleCommentUpdated}
+                onCommentDeleted={handleCommentDeleted}
+              />
+            ))}
+          </div>
+        ) : null}
 
         {isLoading && comments.length > 0 ? (
           <Loader text="Loading more comments..." />
         ) : null}
 
         {hasMore ? (
-          <div className="flex justify-center pt-2">
-            <Button
+          <div className="flex justify-center pt-3">
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={handleLoadMore}
               disabled={isLoading}
+              className="rounded-lg border border-neutral-200 bg-neutral-100 px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-neutral-700 transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               {isLoading ? "Loading..." : "Load More Comments"}
-            </Button>
+            </button>
           </div>
         ) : null}
       </div>

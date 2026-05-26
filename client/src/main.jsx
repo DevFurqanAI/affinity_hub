@@ -3,13 +3,19 @@ import { BrowserRouter } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
 import App from "./App.jsx";
+import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { initializeTheme } from "./utils/theme.js";
 import "./index.css";
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+initializeTheme();
+
 const app = (
   <BrowserRouter>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </BrowserRouter>
 );
 

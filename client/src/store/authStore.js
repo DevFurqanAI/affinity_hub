@@ -13,12 +13,28 @@ const useAuthStore = create((set, get) => ({
   isAuthenticated: false,
   isLoading: false,
   isAuthChecking: true,
+  
+  setCurrentUser: (user) => {
+    set({
+      user
+    });
+  },
 
   setAccessToken: (accessToken) => {
     set({
       accessToken,
       isAuthenticated: Boolean(accessToken)
     });
+  },
+
+  clearAuth: () => {
+    set({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false
+    });
+
+    localStorage.removeItem(AUTH_SESSION_KEY);
   },
 
   register: async (formData) => {

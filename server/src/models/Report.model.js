@@ -33,6 +33,42 @@ const reportSchema = new mongoose.Schema(
       default: "pending"
     },
 
+    /*
+    |--------------------------------------------------------------------------
+    | Moderation Action Tracking
+    |--------------------------------------------------------------------------
+    | Stores the real action performed by an administrator.
+    |--------------------------------------------------------------------------
+    */
+    moderationAction: {
+      type: String,
+      enum: [
+        "none",
+        "content_removed",
+        "user_banned",
+        "content_removed_and_user_banned"
+      ],
+      default: "none"
+    },
+
+    moderationNote: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Moderation note must not be more than 500 characters"],
+      default: ""
+    },
+
+    moderationBan: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Ban",
+      default: null
+    },
+
+    actionTakenAt: {
+      type: Date,
+      default: null
+    },
+
     reviewedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

@@ -8,7 +8,8 @@ import {
   completeProfile,
   updateProfile,
   getUserProfile,
-  updateAvatar
+  updateAvatar,
+  deactivateAccount
 } from "../controllers/user.controller.js";
 import {
   completeProfileValidationSchema,
@@ -34,6 +35,8 @@ router.patch(
 );
 
 router.patch("/me/avatar", verifyJWT, uploadAvatar, updateAvatar);
+
+router.patch("/me/deactivate", verifyJWT, deactivateAccount);
 
 router.get("/:username", verifyJWT, getUserProfile);
 
