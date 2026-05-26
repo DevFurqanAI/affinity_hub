@@ -6,6 +6,10 @@ const hasSmtpConfig = () => {
   return Boolean(env.smtpHost && env.smtpUser && env.smtpPass);
 };
 
+const hasBrevoConfig = () => {
+  return Boolean(env.brevoApiKey && env.brevoSenderEmail);
+};
+
 const createTransporter = () => {
   return nodemailer.createTransport({
     host: env.smtpHost,
@@ -16,6 +20,15 @@ const createTransporter = () => {
       pass: env.smtpPass
     }
   });
+};
+
+const escapeHtml = (value = "") => {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 };
 
 const logOtpToTerminal = ({ to, name, otp, purpose }) => {
@@ -32,6 +45,46 @@ const logOtpToTerminal = ({ to, name, otp, purpose }) => {
   console.log("");
 };
 
+const sendWithBrevoApi = async ({
+  to,
+  name,
+  subject,
+  textContent,
+  htmlContent
+}) => {
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "api-key": env.brevoApiKey,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      sender: {
+        name: env.brevoSenderName,
+        email: env.brevoSenderEmail
+      },
+      to: [
+        {
+          email: to,
+          name
+        }
+      ],
+      subject,
+      textContent,
+      htmlContent
+    })
+  });
+
+  if (!response.ok) {
+    const errorDetails = await response.text();
+
+    throw new Error(
+      `Brevo email request failed with status ${response.status}: ${errorDetails}`
+    );
+  }
+};
+
 const sendOtpEmail = async ({
   to,
   name,
@@ -43,70 +96,96 @@ const sendOtpEmail = async ({
   terminalPurpose
 }) => {
   const expiryText = `${env.otpExpiresMinutes} minutes`;
+  const safeName = escapeHtml(name);
+  const safeOtp = escapeHtml(otp);
+
+  const textContent = `Hello ${name}, your Affinity Hub OTP is ${otp}. It expires in ${expiryText}. ${ignoreMessage}`;
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #18181b;">
+      <h2>${heading}</h2>
+      <p>Hello ${safeName},</p>
+      <p>${instruction}</p>
+      <h1 style="letter-spacing: 4px;">${safeOtp}</h1>
+      <p>This OTP expires in ${expiryText}.</p>
+      <p>${ignoreMessage}</p>
+    </div>
+  `;
 
   /*
   |--------------------------------------------------------------------------
-  | Local Development Fallback
+  | Brevo API Delivery
   |--------------------------------------------------------------------------
-  | If SMTP is missing in development, print OTP in the terminal.
+  | Works locally and on Render because it sends through HTTPS.
   |--------------------------------------------------------------------------
   */
-  if (!hasSmtpConfig()) {
-    if (env.nodeEnv === "production") {
-      throw new Error("SMTP configuration is missing in production");
+  if (hasBrevoConfig()) {
+    try {
+      await sendWithBrevoApi({
+        to,
+        name,
+        subject,
+        textContent,
+        htmlContent
+      });
+
+      return;
+    } catch (error) {
+      if (env.nodeEnv === "production") {
+        throw error;
+      }
+
+      console.warn("Brevo email sending failed in development.");
+      console.warn(error.message);
     }
-
-    logOtpToTerminal({
-      to,
-      name,
-      otp,
-      purpose: terminalPurpose
-    });
-
-    return;
   }
 
-  try {
-    const transporter = createTransporter();
+  /*
+  |--------------------------------------------------------------------------
+  | Optional Local SMTP Fallback
+  |--------------------------------------------------------------------------
+  */
+  if (hasSmtpConfig() && env.nodeEnv !== "production") {
+    try {
+      const transporter = createTransporter();
 
-    await transporter.sendMail({
-      from: env.smtpFrom,
-      to,
-      subject,
-      text: `Hello ${name}, your Affinity Hub OTP is ${otp}. It expires in ${expiryText}. ${ignoreMessage}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #18181b;">
-          <h2>${heading}</h2>
-          <p>Hello ${name},</p>
-          <p>${instruction}</p>
-          <h1 style="letter-spacing: 4px;">${otp}</h1>
-          <p>This OTP expires in ${expiryText}.</p>
-          <p>${ignoreMessage}</p>
-        </div>
-      `
-    });
-  } catch (error) {
-    /*
-    |--------------------------------------------------------------------------
-    | Development Safety
-    |--------------------------------------------------------------------------
-    | Bad SMTP credentials should not block local development.
-    |--------------------------------------------------------------------------
-    */
-    if (env.nodeEnv === "production") {
-      throw error;
+      await transporter.sendMail({
+        from: env.smtpFrom,
+        to,
+        subject,
+        text: textContent,
+        html: htmlContent
+      });
+
+      return;
+    } catch (error) {
+      console.warn("SMTP email sending failed in development.");
+      console.warn(error.message);
     }
-
-    console.warn("SMTP email sending failed in development.");
-    console.warn(error.message);
-
-    logOtpToTerminal({
-      to,
-      name,
-      otp,
-      purpose: terminalPurpose
-    });
   }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Production Protection
+  |--------------------------------------------------------------------------
+  */
+  if (env.nodeEnv === "production") {
+    throw new Error(
+      "Brevo email API configuration is missing or email delivery failed in production"
+    );
+  }
+
+  /*
+  |--------------------------------------------------------------------------
+  | Local Terminal Fallback
+  |--------------------------------------------------------------------------
+  */
+  logOtpToTerminal({
+    to,
+    name,
+    otp,
+    purpose: terminalPurpose
+  });
 };
 
 export const sendVerificationOtpEmail = async ({ to, name, otp }) => {

@@ -29,6 +29,10 @@ const env = {
   smtpFrom:
     process.env.SMTP_FROM || "Affinity Hub <no-reply@affinityhub.com>",
 
+  brevoApiKey: process.env.BREVO_API_KEY,
+  brevoSenderEmail: process.env.BREVO_SENDER_EMAIL,
+  brevoSenderName: process.env.BREVO_SENDER_NAME || "Affinity Hub",
+
   turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY,
 
   otpExpiresMinutes: Number(process.env.OTP_EXPIRES_MINUTES) || 10,
