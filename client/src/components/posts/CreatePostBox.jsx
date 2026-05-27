@@ -260,20 +260,16 @@ function CreatePostBox({
           onClick={handleOpenModal}
           className="group flex w-full items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-left transition hover:bg-[var(--color-surface-muted)] sm:rounded-xl sm:px-4 sm:py-3"
         >
-          <div className="shrink-0 rounded-full bg-gradient-to-tr from-[#fe3b6a] via-[#ff5a3b] to-[#ffaa3b] p-[2px]">
-            <div className="rounded-full bg-[var(--color-surface)] p-[2px]">
-              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-xs font-black text-[var(--color-text)] sm:h-9 sm:w-9">
-                {user?.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user?.name || "Profile"}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  avatarText
-                )}
-              </div>
-            </div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-muted)] text-xs font-black text-[var(--color-text)] sm:h-11 sm:w-11">
+            {user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user?.name || "Profile"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              avatarText
+            )}
           </div>
 
           <div className="min-w-0 flex-1">
