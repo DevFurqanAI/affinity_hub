@@ -99,7 +99,7 @@ function MainLayout() {
 
       <CreatePostBox modalOnly />
 
-      <main className="min-h-screen min-w-0 pb-16 pt-16 lg:pb-0 lg:pl-18 lg:pt-20">
+      <main className="min-h-screen min-w-0 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-16 lg:pb-0 lg:pl-18 lg:pt-20">
         <Outlet />
       </main>
     </div>

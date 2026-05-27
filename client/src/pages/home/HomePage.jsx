@@ -100,7 +100,10 @@ function HomePage() {
             </div>
           </div>
 
-          <CreatePostBox onPostCreated={handlePostCreated} />
+          <CreatePostBox
+            triggerOnly
+            onPostCreated={handlePostCreated}
+          />
 
           <PostList
             posts={posts}
