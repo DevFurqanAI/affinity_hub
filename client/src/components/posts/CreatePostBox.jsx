@@ -258,11 +258,11 @@ function CreatePostBox({
         <button
           type="button"
           onClick={handleOpenModal}
-          className="group flex w-full items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-left transition hover:bg-[var(--color-surface-muted)]"
+          className="group flex w-full items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-left transition hover:bg-[var(--color-surface-muted)] sm:rounded-xl sm:px-4 sm:py-3"
         >
           <div className="shrink-0 rounded-full bg-gradient-to-tr from-[#fe3b6a] via-[#ff5a3b] to-[#ffaa3b] p-[2px]">
             <div className="rounded-full bg-[var(--color-surface)] p-[2px]">
-              <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-xs font-black text-[var(--color-text)]">
+              <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-xs font-black text-[var(--color-text)] sm:h-9 sm:w-9">
                 {user?.avatar ? (
                   <img
                     src={user.avatar}
@@ -293,7 +293,7 @@ function CreatePostBox({
       {/* Modal: mounted globally in MainLayout only */}
       {!triggerOnly && isOpen ? (
         <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-4"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
               handleClose();
@@ -304,10 +304,10 @@ function CreatePostBox({
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-post-title"
-            className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl"
+            className="max-h-[calc(100dvh-4rem)] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-b-0 border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl sm:max-h-[92vh] sm:rounded-2xl sm:border-b"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-4">
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3.5 sm:px-5 sm:py-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-500">
                   Create Post
@@ -332,7 +332,7 @@ function CreatePostBox({
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 p-5">
+            <form onSubmit={handleSubmit} className="space-y-3.5 p-4 sm:space-y-4 sm:p-5">
               {/* Author Row */}
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-xs font-black text-[var(--color-text)]">
@@ -375,7 +375,7 @@ function CreatePostBox({
 
               {/* Media Upload */}
               {!mediaPreview ? (
-                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface-muted)] px-4 py-8 text-center transition hover:border-rose-500/60 hover:bg-rose-500/5">
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface-muted)] px-4 py-5 text-center transition hover:border-rose-500/60 hover:bg-rose-500/5 sm:py-8">
                   <ImageIcon className="h-7 w-7 text-rose-500" />
 
                   <span className="mt-3 text-xs font-black text-[var(--color-text)]">

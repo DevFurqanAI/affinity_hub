@@ -19,7 +19,7 @@ function PostList({
 
   if (isLoading && safePosts.length === 0) {
     return (
-      <div className="rounded-xl border border-neutral-200 bg-white py-10 dark:border-zinc-900 dark:bg-black">
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] py-8 sm:py-10">
         <Loader text="Loading posts..." />
       </div>
     );
@@ -27,7 +27,7 @@ function PostList({
 
   if (!isLoading && safePosts.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-neutral-200 bg-white px-6 py-14 text-center dark:border-zinc-800 dark:bg-black">
+      <div className="rounded-2xl border border-dashed border-[var(--color-border-strong)] bg-[var(--color-surface)] px-5 py-10 text-center sm:px-6 sm:py-14">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-rose-500/15 to-amber-500/15">
           <svg
             viewBox="0 0 24 24"
@@ -45,11 +45,11 @@ function PostList({
           </svg>
         </div>
 
-        <h2 className="mt-4 text-base font-black text-neutral-900 dark:text-white">
+        <h2 className="mt-4 text-base font-black text-[var(--color-text)]">
           Your timeline is quiet
         </h2>
 
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-neutral-500 dark:text-zinc-500">
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-text-muted)]">
           {emptyMessage}
         </p>
       </div>
@@ -57,7 +57,7 @@ function PostList({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {safePosts.map((post) => (
         <PostCard
           key={post._id}
@@ -79,7 +79,7 @@ function PostList({
             type="button"
             onClick={onLoadMore}
             disabled={isLoading}
-            className="rounded-lg border border-neutral-200 bg-neutral-100 px-6 py-3 text-xs font-black uppercase tracking-[0.15em] text-neutral-700 transition hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-6 py-3 text-xs font-black uppercase tracking-[0.15em] text-[var(--color-text-muted)] transition hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? "Loading..." : "Load More"}
           </button>

@@ -199,12 +199,12 @@ function StoryBar() {
 
   return (
     <>
-      <section className="group/stories relative">
+      <section className="group/stories relative -mx-4 sm:mx-0">
         <button
           type="button"
           onClick={loadStories}
           disabled={isLoading}
-          className="absolute -right-1 -top-2 z-10 rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-widest text-[var(--color-text-muted)] opacity-0 transition group-hover/stories:opacity-100 hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="absolute -right-1 -top-2 z-10 hidden rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-widest text-[var(--color-text-muted)] opacity-0 transition group-hover/stories:opacity-100 hover:text-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50 sm:block"
         >
           Refresh
         </button>
@@ -213,7 +213,7 @@ function StoryBar() {
           <Loader text="Loading stories..." />
         ) : null}
 
-        <div className="no-scrollbar mx-1 flex select-none items-center gap-4 overflow-x-auto pb-3 scroll-smooth">
+        <div className="no-scrollbar flex select-none items-center gap-3 overflow-x-auto px-4 pb-2 scroll-smooth sm:mx-1 sm:gap-4 sm:px-0 sm:pb-3">
           <StoryCard
             isCreateCard
             currentUser={currentUser}
@@ -221,7 +221,7 @@ function StoryBar() {
           />
 
           {!isLoading && storyGroups.length === 0 ? (
-            <div className="flex min-w-32 items-center px-2 py-3">
+            <div className="flex min-w-28 items-center px-2 py-3">
               <p className="text-[10px] font-bold text-[var(--color-text-muted)]">
                 No stories yet.
               </p>

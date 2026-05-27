@@ -253,9 +253,9 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
 
   return (
     <>
-      <article className="overflow-hidden rounded-xl border border-neutral-200 bg-white transition-shadow hover:shadow-sm dark:border-transparent dark:bg-black dark:hover:shadow-none">
+      <article className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] transition-shadow sm:rounded-xl sm:hover:shadow-sm">
         {/* Post Header */}
-        <div className="flex items-center justify-between gap-3 px-3.5 py-3">
+        <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-3.5">
           <div className="flex min-w-0 items-center gap-3">
            <Link to={`/profile/${author?.username}`} className="shrink-0">
             <StoryAvatar
@@ -268,12 +268,12 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
             <div className="min-w-0">
               <Link
                 to={`/profile/${author?.username}`}
-                className="block truncate text-xs font-black text-neutral-900 hover:underline dark:text-white"
+                className="block truncate text-xs font-black text-[var(--color-text)] hover:underline"
               >
                 {author?.username}
               </Link>
 
-              <p className="truncate text-[10px] font-semibold text-neutral-500 dark:text-zinc-500">
+              <p className="truncate text-[10px] font-semibold text-[var(--color-text-muted)]">
                 {author?.name}
                 {createdDate ? ` • ${createdDate}` : ""}
               </p>
@@ -339,19 +339,19 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
         {localPost.mediaType === "image" && localPost.media?.url ? (
           <div
             onDoubleClick={handleDoubleClickLike}
-            className="relative aspect-video max-h-[420px] cursor-pointer select-none overflow-hidden bg-neutral-100 dark:bg-[#050505]"
+            className="relative flex max-h-[62dvh] cursor-pointer select-none items-center justify-center overflow-hidden bg-[var(--color-surface-muted)] sm:max-h-[460px]"
           >
             <img
               src={localPost.media.url}
               alt={localPost.caption || "Post media"}
-              className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.01]"
+              className="max-h-[62dvh] w-full object-contain transition-transform duration-500 hover:scale-[1.01] sm:max-h-[460px]"
             />
 
             {showHeartAnimation ? (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/10">
                 <HeartIcon
                   filled
-                  className="h-20 w-20 scale-110 text-red-500 drop-shadow-2xl"
+                  className="h-16 w-16 scale-110 text-red-500 drop-shadow-2xl sm:h-20 sm:w-20"
                 />
               </div>
             ) : null}
@@ -359,31 +359,32 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
         ) : null}
 
         {localPost.mediaType === "video" && localPost.media?.url ? (
-          <div className="bg-black">
+          <div className="flex justify-center bg-black">
             <video
               src={localPost.media.url}
               controls
-              className="max-h-[520px] w-full object-contain"
+              playsInline
+              className="max-h-[62dvh] w-full object-contain sm:max-h-[520px]"
             />
           </div>
         ) : null}
 
         {/* Actions */}
-        <div className="flex items-center justify-between px-3.5 pb-2 pt-3">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between px-3 pb-1.5 pt-2 sm:px-3.5 sm:pb-2 sm:pt-3">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={handleLikeToggle}
               disabled={isLikeLoading}
               aria-label={isLiked ? "Unlike post" : "Like post"}
-              className="transition-transform active:scale-90 disabled:cursor-not-allowed disabled:opacity-60"
+              className="-ml-2 flex h-11 w-11 items-center justify-center rounded-full transition active:scale-90 hover:bg-[var(--color-surface-muted)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               <HeartIcon
                 filled={isLiked}
                 className={`h-6 w-6 transition-colors ${
                   isLiked
                     ? "text-rose-500"
-                    : "text-neutral-800 hover:text-rose-500 dark:text-zinc-100"
+                    : "text-[var(--color-text)] hover:text-rose-500"
                 }`}
               />
             </button>
@@ -393,26 +394,26 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
               onClick={() => setIsCommentsOpen((value) => !value)}
               aria-expanded={isCommentsOpen}
               aria-label={isCommentsOpen ? "Hide comments" : "Show comments"}
-              className="transition-transform active:scale-90"
+              className="flex h-11 w-11 items-center justify-center rounded-full transition active:scale-90 hover:bg-[var(--color-surface-muted)]"
             >
               <CommentIcon
                 className={`h-6 w-6 transition-colors ${
                   isCommentsOpen
                     ? "text-rose-500"
-                    : "text-neutral-800 hover:text-rose-500 dark:text-zinc-100"
+                    : "text-[var(--color-text)] hover:text-rose-500"
                 }`}
               />
             </button>
           </div>
 
-          <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-neutral-500 dark:bg-zinc-900 dark:text-zinc-500">
+          <span className="rounded-full bg-[var(--color-surface-muted)] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
             {localPost.visibility || "public"}
           </span>
         </div>
 
         {/* Likes, Caption and Edit Form */}
-        <div className="px-3.5 pb-3.5">
-          <p className="text-xs font-black text-neutral-900 dark:text-white">
+        <div className="px-3 pb-3 sm:px-3.5 sm:pb-3.5">
+          <p className="text-xs font-black text-[var(--color-text)]">
             {likesCount} {likesCount === 1 ? "like" : "likes"}
           </p>
 
@@ -454,7 +455,7 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700 dark:text-zinc-300">
               <Link
                 to={`/profile/${author?.username}`}
-                className="mr-2 font-black text-neutral-900 hover:underline dark:text-white"
+                className="mr-2 font-black text-[var(--color-text)] hover:underline"
               >
                 {author?.username}
               </Link>
@@ -467,7 +468,7 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
             <button
               type="button"
               onClick={() => setIsCommentsOpen((value) => !value)}
-              className="mt-2 text-xs font-semibold text-neutral-500 transition hover:text-neutral-800 dark:text-zinc-500 dark:hover:text-zinc-300"
+              className="mt-2 text-xs font-semibold text-[var(--color-text-muted)] transition hover:text-[var(--color-text)]"
             >
               {isCommentsOpen
                 ? "Hide comments"
@@ -479,7 +480,7 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
         </div>
 
         {isCommentsOpen ? (
-          <div className="border-t border-neutral-100 dark:border-zinc-900">
+          <div className="border-t border-[var(--color-border)]">
             <CommentSection
               postId={localPost._id}
               initialCommentsCount={commentsCount}
