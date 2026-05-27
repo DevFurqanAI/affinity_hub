@@ -52,9 +52,9 @@ function StatusBadge({ children, tone = "neutral" }) {
 
 function InformationRow({ label, value, icon: Icon }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-[var(--color-border)] py-4 last:border-b-0">
+    <div className="flex flex-col gap-3 border-b border-[var(--color-border)] py-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface-muted)] text-[var(--color-text-muted)]">
           <Icon className="h-4 w-4" />
         </div>
 
@@ -63,7 +63,7 @@ function InformationRow({ label, value, icon: Icon }) {
         </p>
       </div>
 
-      <div className="min-w-0 text-right text-sm font-bold text-[var(--color-text)]">
+      <div className="min-w-0 break-all pl-12 text-sm font-bold text-[var(--color-text)] sm:break-normal sm:pl-0 sm:text-right">
         {value}
       </div>
     </div>

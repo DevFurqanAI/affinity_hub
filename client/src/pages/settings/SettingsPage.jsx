@@ -78,6 +78,8 @@ const settingsSections = [
   }
 ];
 
+const settingsItems = settingsSections.flatMap((section) => section.items);
+
 const themeOptions = [
   {
     value: "light",
@@ -98,6 +100,44 @@ const themeOptions = [
     icon: Globe
   }
 ];
+
+function MobileSettingsTabs({ activeSection, onSelect }) {
+  return (
+    <nav
+      aria-label="Settings sections"
+      className="sticky top-16 z-20 -mx-4 mt-6 border-y border-[var(--color-border)] bg-[var(--color-bg)]/95 py-3 backdrop-blur-md lg:hidden"
+    >
+      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4">
+        {settingsItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeSection === item.id;
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              aria-current={isActive ? "page" : undefined}
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2.5 text-xs font-bold transition ${
+                isActive
+                  ? "border-rose-500/30 bg-rose-500/10 text-[var(--color-text)]"
+                  : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)]"
+              }`}
+            >
+              <Icon
+                className={`h-4 w-4 ${
+                  isActive ? item.accent : "text-[var(--color-text-muted)]"
+                }`}
+              />
+
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
 
 function SettingsPage() {
   const navigate = useNavigate();
@@ -311,10 +351,10 @@ function SettingsPage() {
 
     return (
       <form onSubmit={handleProfileSubmit} className="space-y-6">
-        <div className="flex flex-col gap-5 border-b border-[var(--color-border)] pb-6 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-4 border-b border-[var(--color-border)] pb-5 sm:gap-5 sm:pb-6">
           <div className="shrink-0 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600 p-[2px]">
             <div className="rounded-full bg-[var(--color-surface)] p-[3px]">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-xl font-black text-[var(--color-text)]">
+              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-lg font-black text-[var(--color-text)] sm:h-16 sm:w-16 sm:text-xl">
                 {profileUser?.avatar ? (
                   <img
                     src={profileUser.avatar}
@@ -329,7 +369,7 @@ function SettingsPage() {
           </div>
 
           <div className="min-w-0">
-            <p className="truncate font-mono text-base font-black text-[var(--color-text)]">
+            <p className="truncate font-mono text-sm font-black text-[var(--color-text)] sm:text-base">
               {profileUser?.username}
             </p>
 
@@ -706,9 +746,9 @@ function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 pb-14 pt-10 sm:px-6">
-      <header>
-        <h1 className="text-3xl font-black tracking-tight text-[var(--color-text)]">
+    <div className="mx-auto w-full max-w-5xl px-4 pb-8 pt-6 sm:px-6 sm:pb-12 sm:pt-10">
+      <header className="max-w-2xl">
+        <h1 className="text-2xl font-black tracking-tight text-[var(--color-text)] sm:text-3xl">
           Settings
         </h1>
 
@@ -718,9 +758,15 @@ function SettingsPage() {
         </p>
       </header>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[255px_minmax(0,1fr)]">
-        {/* Settings Navigation */}
-        <aside className="h-fit rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2">
+      {/* Mobile swipeable settings navigation */}
+      <MobileSettingsTabs
+        activeSection={activeSection}
+        onSelect={setActiveSection}
+      />
+
+      <div className="mt-4 grid gap-6 sm:mt-6 lg:mt-8 lg:grid-cols-[255px_minmax(0,1fr)]">
+        {/* Desktop Settings Navigation */}
+        <aside className="hidden h-fit rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2 lg:block">
           {settingsSections.map((section) => (
             <div key={section.group} className="mb-4 last:mb-0">
               <p className="px-3 pb-2 pt-2 text-[9px] font-black uppercase tracking-[0.22em] text-[var(--color-text-muted)]">
@@ -760,7 +806,7 @@ function SettingsPage() {
         </aside>
 
         {/* Active Settings Panel */}
-        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 sm:p-7">
+        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:p-7">
           {renderActivePanel()}
         </section>
       </div>
