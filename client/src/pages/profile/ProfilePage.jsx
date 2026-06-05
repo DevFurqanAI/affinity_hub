@@ -23,6 +23,7 @@ function ProfilePage({ isMePage = false }) {
 
   const loggedInUser = useAuthStore((state) => state.user);
   const loggedInUserId = loggedInUser?._id;
+  const setCurrentUser = useAuthStore((state) => state.setCurrentUser);
 
   const [profileUser, setProfileUser] = useState(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -254,6 +255,18 @@ function ProfilePage({ isMePage = false }) {
     }
   };
 
+  const syncProfileUser = (updatedUser) => {
+    if (!updatedUser) {
+      return;
+    }
+
+    setProfileUser(updatedUser);
+
+    if (loggedInUserId && updatedUser._id === loggedInUserId) {
+      setCurrentUser(updatedUser);
+    }
+  };
+
   const handleProfileUpdate = async (profileData) => {
     try {
       setIsSaving(true);
@@ -261,7 +274,7 @@ function ProfilePage({ isMePage = false }) {
       const result = await userService.updateProfile(profileData);
       const updatedUser = result.data?.user;
 
-      setProfileUser(updatedUser);
+      syncProfileUser(updatedUser);
 
       toast.success(result.message || "Profile updated successfully");
 
@@ -287,7 +300,7 @@ function ProfilePage({ isMePage = false }) {
       const result = await userService.updateAvatar(avatarFile);
       const updatedUser = result.data?.user;
 
-      setProfileUser(updatedUser);
+      syncProfileUser(updatedUser);
 
       toast.success(result.message || "Avatar updated successfully");
 
@@ -295,6 +308,30 @@ function ProfilePage({ isMePage = false }) {
     } catch (error) {
       const message =
         error.response?.data?.message || "Failed to update avatar";
+
+      toast.error(message);
+
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    try {
+      setIsSaving(true);
+
+      const result = await userService.removeAvatar();
+      const updatedUser = result.data?.user;
+
+      syncProfileUser(updatedUser);
+
+      toast.success(result.message || "Avatar removed successfully");
+
+      return true;
+    } catch (error) {
+      const message =
+        error.response?.data?.message || "Failed to remove avatar";
 
       toast.error(message);
 
@@ -406,6 +443,7 @@ function ProfilePage({ isMePage = false }) {
         onClose={() => setIsEditOpen(false)}
         onProfileUpdate={handleProfileUpdate}
         onAvatarUpdate={handleAvatarUpdate}
+        onAvatarRemove={handleAvatarRemove}
         isLoading={isSaving}
       />
 

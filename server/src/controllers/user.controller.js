@@ -285,3 +285,25 @@ export const deactivateAccount = asyncHandler(async (req, res) => {
     )
   );
 });
+
+export const removeAvatar = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  user.avatar = "";
+
+  await user.save({ validateBeforeSave: false });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        user
+      },
+      "Profile photo removed successfully"
+    )
+  );
+});

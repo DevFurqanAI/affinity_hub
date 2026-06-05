@@ -35,6 +35,11 @@ const userService = {
     return response.data;
   },
 
+  removeAvatar: async () => {
+    const response = await api.delete("/users/me/avatar");
+    return response.data;
+  },
+
   deactivateAccount: async (password) => {
     const response = await api.patch("/users/me/deactivate", {
       password

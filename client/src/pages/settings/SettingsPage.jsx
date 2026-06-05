@@ -159,6 +159,7 @@ function SettingsPage() {
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
   const [isBlockedLoading, setIsBlockedLoading] = useState(false);
   const [unblockingUserId, setUnblockingUserId] = useState("");
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
@@ -294,6 +295,38 @@ function SettingsPage() {
     }
   };
 
+  const handleRemoveAvatar = async () => {
+    if (!profileUser?.avatar) {
+      toast.error("No profile photo to remove");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Remove your profile photo? Your avatar will show your name initial instead."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsRemovingAvatar(true);
+
+      const result = await userService.removeAvatar();
+
+      updateProfileUser(result.data?.user);
+
+      toast.success(result.message || "Profile photo removed successfully");
+    } catch (error) {
+      const message =
+        error.response?.data?.message || "Failed to remove profile photo";
+
+      toast.error(message);
+    } finally {
+      setIsRemovingAvatar(false);
+    }
+  };
+
   const handleUnblockUser = async (userId) => {
     try {
       setUnblockingUserId(userId);
@@ -369,17 +402,38 @@ function SettingsPage() {
               {profileUser?.username}
             </p>
 
-            <label className="mt-1 inline-block cursor-pointer text-xs font-black text-[#0095f6] transition hover:text-blue-500">
-              {isUploadingAvatar ? "Uploading photo..." : "Change profile photo"}
+            <div className="mt-1 flex flex-wrap items-center gap-3">
+              <label className="inline-block cursor-pointer text-xs font-black text-[#0095f6] transition hover:text-blue-500">
+                {isUploadingAvatar ? "Uploading photo..." : "Change profile photo"}
 
-              <input
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                onChange={handleAvatarChange}
-                disabled={isUploadingAvatar || isSavingProfile}
-                className="hidden"
-              />
-            </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleAvatarChange}
+                  disabled={
+                    isUploadingAvatar ||
+                    isRemovingAvatar ||
+                    isSavingProfile
+                  }
+                  className="hidden"
+                />
+              </label>
+
+              {profileUser?.avatar ? (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  disabled={
+                    isUploadingAvatar ||
+                    isRemovingAvatar ||
+                    isSavingProfile
+                  }
+                  className="text-xs font-black text-rose-500 transition hover:text-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isRemovingAvatar ? "Removing..." : "Remove photo"}
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -430,7 +484,7 @@ function SettingsPage() {
 
         <Button
           type="submit"
-          disabled={isSavingProfile || isUploadingAvatar}
+          disabled={isSavingProfile || isUploadingAvatar || isRemovingAvatar}
           className="w-full !border-0 !bg-[#0095f6] !text-white hover:!bg-blue-600"
         >
           {isSavingProfile ? "Saving Updates..." : "Submit Updates"}

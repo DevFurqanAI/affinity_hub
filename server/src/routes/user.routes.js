@@ -9,6 +9,7 @@ import {
   updateProfile,
   getUserProfile,
   updateAvatar,
+  removeAvatar,
   deactivateAccount
 } from "../controllers/user.controller.js";
 import {
@@ -35,6 +36,8 @@ router.patch(
 );
 
 router.patch("/me/avatar", verifyJWT, uploadAvatar, updateAvatar);
+
+router.delete("/me/avatar", verifyJWT, removeAvatar);
 
 router.patch("/me/deactivate", verifyJWT, deactivateAccount);
 
