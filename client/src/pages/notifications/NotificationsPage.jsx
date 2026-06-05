@@ -1,74 +1,15 @@
 import { useEffect, useState } from "react";
-import {
-  Ban,
-  Bell,
-  CheckCheck,
-  Flag,
-  Heart,
-  Mail,
-  MessageCircle,
-  Trash2,
-  UserPlus
-} from "lucide-react";
-import { Link, Navigate } from "react-router-dom";
+import { Bell, CheckCheck } from "lucide-react";
+import { Navigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import Button from "../../components/common/Button.jsx";
 import Loader from "../../components/common/Loader.jsx";
+import NotificationCard from "../../components/notifications/NotificationCard.jsx";
 import notificationService from "../../services/notificationService.js";
 import useAuthStore from "../../store/authStore.js";
 
 const PAGE_LIMIT = 20;
-
-function NotificationTypeIcon({ type }) {
-  const classes = "h-4 w-4 shrink-0";
-
-  const icons = {
-    follow: <UserPlus className={`${classes} text-violet-500`} />,
-    like: <Heart className={`${classes} fill-rose-500 text-rose-500`} />,
-    comment: <MessageCircle className={`${classes} text-sky-500`} />,
-    report_action: <Flag className={`${classes} text-amber-500`} />,
-    ban: <Ban className={`${classes} text-rose-500`} />,
-    appeal: <Mail className={`${classes} text-emerald-500`} />
-  };
-
-  return icons[type] || <Bell className={`${classes} text-rose-500`} />;
-}
-
-function NotificationAvatar({ sender, eager = false }) {
-  const avatarSource = sender?.avatar || "";
-  const avatarText = sender?.name?.charAt(0)?.toUpperCase() || "A";
-
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    setIsLoaded(false);
-    setHasError(false);
-  }, [avatarSource]);
-
-  return (
-    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-muted)] text-sm font-black text-[var(--color-text-muted)]">
-      {!avatarSource || !isLoaded || hasError ? (
-        <span>{avatarText}</span>
-      ) : null}
-
-      {avatarSource && !hasError ? (
-        <img
-          src={avatarSource}
-          alt={sender?.name || "Notification sender"}
-          loading={eager ? "eager" : "lazy"}
-          decoding="async"
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
-            isLoaded ? "opacity-100" : "opacity-0"
-          }`}
-        />
-      ) : null}
-    </div>
-  );
-}
 
 function NotificationsPage() {
   const user = useAuthStore((state) => state.user);
@@ -140,7 +81,7 @@ function NotificationsPage() {
       setNotifications((previousNotifications) =>
         previousNotifications.map((notification) =>
           notification._id === notificationId
-            ? updatedNotification
+            ? updatedNotification || { ...notification, isRead: true }
             : notification
         )
       );
@@ -265,102 +206,16 @@ function NotificationsPage() {
       ) : null}
 
       <section className="space-y-3">
-        {notifications.map((notification, index) => {
-          const isBusy = busyNotificationId === notification._id;
-          const senderProfilePath = notification.sender?.username
-            ? `/profile/${notification.sender.username}`
-            : "";
-
-          return (
-            <article
-              key={notification._id}
-              className={`relative rounded-2xl border p-4 transition ${
-                notification.isRead
-                  ? "border-[var(--color-border)] bg-[var(--color-surface)]"
-                  : "border-rose-500/20 bg-rose-500/[0.04]"
-              }`}
-            >
-              {!notification.isRead ? (
-                <span className="absolute right-4 top-4 h-2 w-2 rounded-full bg-rose-500" />
-              ) : null}
-
-              <div className="flex gap-3">
-                {senderProfilePath ? (
-                  <Link to={senderProfilePath} className="shrink-0">
-                    <NotificationAvatar
-                      sender={notification.sender}
-                      eager={index < 4}
-                    />
-                  </Link>
-                ) : (
-                  <NotificationAvatar
-                    sender={notification.sender}
-                    eager={index < 4}
-                  />
-                )}
-
-                <div className="min-w-0 flex-1 pr-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <NotificationTypeIcon type={notification.type} />
-
-                    {senderProfilePath ? (
-                      <Link
-                        to={senderProfilePath}
-                        className="truncate text-sm font-black text-[var(--color-text)] transition hover:text-rose-500"
-                      >
-                        {notification.sender?.name}
-                      </Link>
-                    ) : (
-                      <p className="text-sm font-black text-[var(--color-text)]">
-                        System
-                      </p>
-                    )}
-
-                    {notification.sender?.username ? (
-                      <p className="truncate text-xs text-[var(--color-text-muted)]">
-                        @{notification.sender.username}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <p className="mt-1.5 text-sm leading-6 text-[var(--color-text)]">
-                    {notification.message}
-                  </p>
-
-                  <p className="mt-2 text-[11px] font-medium text-[var(--color-text-muted)]">
-                    {notification.type.replace("_", " ")} ·{" "}
-                    {new Date(notification.createdAt).toLocaleString()}
-                  </p>
-
-                  <div className="mt-3 flex items-center gap-2">
-                    {!notification.isRead ? (
-                      <button
-                        type="button"
-                        onClick={() => handleMarkAsRead(notification._id)}
-                        disabled={isBusy}
-                        className="rounded-lg bg-[var(--color-primary-soft)] px-3 py-2 text-[11px] font-black text-rose-500 transition hover:bg-rose-500/15 disabled:opacity-60"
-                      >
-                        {isBusy ? "Updating..." : "Mark Read"}
-                      </button>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleDeleteNotification(notification._id)
-                      }
-                      disabled={isBusy}
-                      aria-label="Delete notification"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition hover:bg-rose-500/10 hover:text-rose-500 disabled:opacity-60"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
-          );
-        })}
+        {notifications.map((notification, index) => (
+          <NotificationCard
+            key={notification._id}
+            notification={notification}
+            index={index}
+            isBusy={busyNotificationId === notification._id}
+            onMarkAsRead={handleMarkAsRead}
+            onDelete={handleDeleteNotification}
+          />
+        ))}
       </section>
 
       {pagination.page < pagination.totalPages ? (

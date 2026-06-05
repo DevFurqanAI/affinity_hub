@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import toast from "react-hot-toast";
 
 import Loader from "../common/Loader.jsx";
+import NotificationCard from "./NotificationCard.jsx";
 import notificationService from "../../services/notificationService.js";
 
 const PAGE_LIMIT = 20;
@@ -15,6 +16,7 @@ function NotificationsDrawer({ isOpen, onClose }) {
     totalPages: 1
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [busyNotificationId, setBusyNotificationId] = useState("");
 
   const loadNotifications = async (page = 1, shouldReplace = true) => {
     try {
@@ -53,6 +55,8 @@ function NotificationsDrawer({ isOpen, onClose }) {
 
   const handleMarkAsRead = async (notificationId) => {
     try {
+      setBusyNotificationId(notificationId);
+
       const result = await notificationService.markAsRead(notificationId);
       const updatedNotification = result.data?.notification;
 
@@ -69,6 +73,8 @@ function NotificationsDrawer({ isOpen, onClose }) {
       toast.error(
         error.response?.data?.message || "Failed to mark notification as read"
       );
+    } finally {
+      setBusyNotificationId("");
     }
   };
 
@@ -94,6 +100,8 @@ function NotificationsDrawer({ isOpen, onClose }) {
 
   const handleDeleteNotification = async (notificationId) => {
     try {
+      setBusyNotificationId(notificationId);
+
       const selectedNotification = notifications.find(
         (notification) => notification._id === notificationId
       );
@@ -115,6 +123,8 @@ function NotificationsDrawer({ isOpen, onClose }) {
       toast.error(
         error.response?.data?.message || "Failed to delete notification"
       );
+    } finally {
+      setBusyNotificationId("");
     }
   };
 
@@ -125,7 +135,7 @@ function NotificationsDrawer({ isOpen, onClose }) {
   return (
     <section
       aria-label="Notifications panel"
-      className="fixed bottom-0 left-[72px] top-0 z-40 hidden w-[390px] flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl lg:flex"
+      className="fixed bottom-0 left-[72px] top-0 z-40 hidden w-[410px] flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl lg:flex"
     >
       <div className="flex items-start justify-between px-7 pb-5 pt-7">
         <div>
@@ -163,7 +173,7 @@ function NotificationsDrawer({ isOpen, onClose }) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pb-6 pt-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
         {isLoading && notifications.length === 0 ? (
           <Loader text="Loading notifications..." />
         ) : null}
@@ -181,86 +191,24 @@ function NotificationsDrawer({ isOpen, onClose }) {
         ) : null}
 
         {notifications.length > 0 ? (
-          <div className="space-y-1">
-            {notifications.map((notification) => {
-              const sender = notification.sender;
-              const avatarText =
-                sender?.name?.charAt(0)?.toUpperCase() || "A";
-
-              return (
-                <div
-                  key={notification._id}
-                  className={`group flex items-start gap-3 rounded-xl px-3 py-3 transition ${
-                    notification.isRead
-                      ? "hover:bg-[var(--color-surface-muted)]"
-                      : "bg-[var(--color-surface-muted)]"
-                  }`}
-                >
-                  <div className="relative shrink-0">
-                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-elevated)] text-xs font-black text-[var(--color-text)]">
-                      {sender?.avatar ? (
-                        <img
-                          src={sender.avatar}
-                          alt={sender.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        avatarText
-                      )}
-                    </div>
-
-                    {!notification.isRead ? (
-                      <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-[var(--color-surface)] bg-rose-500" />
-                    ) : null}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs leading-5 text-[var(--color-text)]">
-                      <span className="font-black">
-                        {sender?.username || sender?.name || "System"}
-                      </span>{" "}
-                      <span className="text-[var(--color-text-muted)]">
-                        {notification.message}
-                      </span>
-                    </p>
-
-                    <p className="mt-1 text-[10px] font-semibold text-[var(--color-text-muted)]">
-                      {notification.type?.replaceAll("_", " ")} ·{" "}
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
-
-                    <div className="mt-2 flex items-center gap-3">
-                      {!notification.isRead ? (
-                        <button
-                          type="button"
-                          onClick={() => handleMarkAsRead(notification._id)}
-                          className="text-[10px] font-black text-[#0095f6] hover:text-blue-500"
-                        >
-                          Mark read
-                        </button>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleDeleteNotification(notification._id)
-                        }
-                        className="text-[10px] font-black text-rose-500 hover:text-rose-400"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="space-y-2">
+            {notifications.map((notification, index) => (
+              <NotificationCard
+                key={notification._id}
+                notification={notification}
+                index={index}
+                compact
+                isBusy={busyNotificationId === notification._id}
+                onMarkAsRead={handleMarkAsRead}
+                onDelete={handleDeleteNotification}
+                onNavigate={onClose}
+              />
+            ))}
 
             {pagination.page < pagination.totalPages ? (
               <button
                 type="button"
-                onClick={() =>
-                  loadNotifications(pagination.page + 1, false)
-                }
+                onClick={() => loadNotifications(pagination.page + 1, false)}
                 disabled={isLoading}
                 className="mt-4 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] py-2.5 text-xs font-black text-[var(--color-text-muted)] transition hover:text-[var(--color-text)] disabled:opacity-60"
               >

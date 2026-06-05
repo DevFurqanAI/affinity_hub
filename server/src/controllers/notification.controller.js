@@ -5,10 +5,36 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 
-const senderPopulate = {
-  path: "sender",
-  select: "name username avatar"
-};
+const notificationPopulate = [
+  {
+    path: "sender",
+    select: "name username avatar status"
+  },
+  {
+    path: "post",
+    select: "caption media mediaType visibility isDeleted author createdAt",
+    populate: {
+      path: "author",
+      select: "name username avatar"
+    }
+  },
+  {
+    path: "comment",
+    select: "content author isDeleted createdAt",
+    populate: {
+      path: "author",
+      select: "name username avatar"
+    }
+  },
+  {
+    path: "story",
+    select: "caption media mediaType expiresAt user",
+    populate: {
+      path: "user",
+      select: "name username avatar"
+    }
+  }
+];
 
 const isValidMongoId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
@@ -29,12 +55,6 @@ const getPaginationValues = (req) => {
   };
 };
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/notifications
-|--------------------------------------------------------------------------
-| Get logged-in user's notifications.
-*/
 export const getMyNotifications = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPaginationValues(req);
 
@@ -50,7 +70,7 @@ export const getMyNotifications = asyncHandler(async (req, res) => {
   });
 
   const notifications = await Notification.find(query)
-    .populate(senderPopulate)
+    .populate(notificationPopulate)
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
@@ -75,12 +95,6 @@ export const getMyNotifications = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| PATCH /api/notifications/:notificationId/read
-|--------------------------------------------------------------------------
-| Mark one notification as read.
-*/
 export const markNotificationAsRead = asyncHandler(async (req, res) => {
   const { notificationId } = req.params;
 
@@ -91,7 +105,7 @@ export const markNotificationAsRead = asyncHandler(async (req, res) => {
   const notification = await Notification.findOne({
     _id: notificationId,
     receiver: req.user._id
-  }).populate(senderPopulate);
+  }).populate(notificationPopulate);
 
   if (!notification) {
     throw new ApiError(404, "Notification not found");
@@ -100,23 +114,17 @@ export const markNotificationAsRead = asyncHandler(async (req, res) => {
   notification.isRead = true;
   await notification.save({ validateBeforeSave: false });
 
-  return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        { notification },
-        "Notification marked as read"
-      )
-    );
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        notification
+      },
+      "Notification marked as read"
+    )
+  );
 });
 
-/*
-|--------------------------------------------------------------------------
-| PATCH /api/notifications/read-all
-|--------------------------------------------------------------------------
-| Mark all logged-in user's notifications as read.
-*/
 export const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
   const result = await Notification.updateMany(
     {
@@ -141,12 +149,6 @@ export const markAllNotificationsAsRead = asyncHandler(async (req, res) => {
   );
 });
 
-/*
-|--------------------------------------------------------------------------
-| DELETE /api/notifications/:notificationId
-|--------------------------------------------------------------------------
-| Delete one notification owned by logged-in user.
-*/
 export const deleteNotification = asyncHandler(async (req, res) => {
   const { notificationId } = req.params;
 
