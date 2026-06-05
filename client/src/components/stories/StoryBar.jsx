@@ -134,6 +134,18 @@ function StoryBar() {
     loadStories();
   }, [loadStories]);
 
+  useEffect(() => {
+    const handleRefreshStories = () => {
+      loadStories();
+    };
+
+    window.addEventListener("affinity-refresh-stories", handleRefreshStories);
+
+    return () => {
+      window.removeEventListener("affinity-refresh-stories", handleRefreshStories);
+    };
+  }, [loadStories]);
+
   const handleOpenStory = (storyId) => {
     const index = sortedStories.findIndex((story) => story._id === storyId);
 

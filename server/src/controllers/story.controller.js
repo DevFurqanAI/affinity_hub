@@ -60,6 +60,35 @@ const uploadBufferToCloudinary = (fileBuffer, mediaType) => {
   });
 };
 
+const getAccessibleStoryOwnerIds = async (viewerId) => {
+  const currentUser = await User.findById(viewerId).select("following status");
+
+  if (!currentUser) {
+    throw new ApiError(404, "Current user not found");
+  }
+
+  const blockedUserIds = await getBlockedUserIdsForViewer(viewerId);
+
+  const blockedIdSet = new Set(
+    blockedUserIds.map((blockedId) => blockedId.toString())
+  );
+
+  const allowedFollowingIds = currentUser.following.filter(
+    (followingId) => !blockedIdSet.has(followingId.toString())
+  );
+
+  const accessibleOwnerIds = [viewerId, ...allowedFollowingIds];
+
+  const activeStoryOwners = await User.find({
+    _id: {
+      $in: accessibleOwnerIds
+    },
+    status: "active"
+  }).select("_id");
+
+  return activeStoryOwners.map((user) => user._id);
+};
+
 export const createStory = asyncHandler(async (req, res) => {
   const { caption = "" } = req.body;
 
@@ -98,31 +127,7 @@ export const createStory = asyncHandler(async (req, res) => {
 });
 
 export const getStoryFeed = asyncHandler(async (req, res) => {
-  const currentUser = await User.findById(req.user._id).select("following");
-
-  if (!currentUser) {
-    throw new ApiError(404, "Current user not found");
-  }
-
-  const blockedUserIds = await getBlockedUserIdsForViewer(req.user._id);
-
-  const allowedFollowingIds = currentUser.following.filter(
-    (followingId) =>
-      !blockedUserIds.some(
-        (blockedId) => blockedId.toString() === followingId.toString()
-      )
-  );
-
-  const userIds = [req.user._id, ...allowedFollowingIds];
-
-  const activeStoryOwners = await User.find({
-    _id: {
-      $in: userIds
-    },
-    status: "active"
-  }).select("_id");
-
-  const activeStoryOwnerIds = activeStoryOwners.map((user) => user._id);
+  const activeStoryOwnerIds = await getAccessibleStoryOwnerIds(req.user._id);
 
   const stories = await Story.find({
     user: {
@@ -149,13 +154,15 @@ export const getStoryFeed = asyncHandler(async (req, res) => {
     viewedStories.map((view) => view.story.toString())
   );
 
-  const storiesWithViewStatus = stories.map((story) => {
-    const storyObject = story.toObject();
+  const storiesWithViewStatus = stories
+    .filter((story) => story.user)
+    .map((story) => {
+      const storyObject = story.toObject();
 
-    storyObject.isViewedByMe = viewedStoryIds.has(story._id.toString());
+      storyObject.isViewedByMe = viewedStoryIds.has(story._id.toString());
 
-    return storyObject;
-  });
+      return storyObject;
+    });
 
   return res.status(200).json(
     new ApiResponse(
@@ -201,6 +208,20 @@ export const viewStory = asyncHandler(async (req, res) => {
   const isOwner = storyOwnerId.toString() === req.user._id.toString();
 
   if (!isOwner) {
+    const currentUser = await User.findById(req.user._id).select("following");
+
+    if (!currentUser) {
+      throw new ApiError(404, "Current user not found");
+    }
+
+    const isFollowingOwner = currentUser.following.some(
+      (followingId) => followingId.toString() === storyOwnerId.toString()
+    );
+
+    if (!isFollowingOwner) {
+      throw new ApiError(403, "You can only view stories from users you follow");
+    }
+
     const isBlocked = await hasBlockRelation(req.user._id, storyOwnerId);
 
     if (isBlocked) {
