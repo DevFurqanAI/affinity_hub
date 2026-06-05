@@ -6,7 +6,8 @@ function StoryAvatar({
   user,
   sizeClassName = "h-10 w-10",
   textClassName = "text-xs",
-  className = ""
+  className = "",
+  showStoryRing = false
 }) {
   const avatarText = user?.name?.charAt(0)?.toUpperCase() || "A";
 
@@ -23,6 +24,10 @@ function StoryAvatar({
   }, [user?._id, user?.hasActiveStory, user?.hasUnviewedStory]);
 
   useEffect(() => {
+    if (!showStoryRing) {
+      return undefined;
+    }
+
     const handleStoryStatusChanged = (event) => {
       const changedUserId = event.detail?.userId;
 
@@ -41,7 +46,7 @@ function StoryAvatar({
     return () => {
       window.removeEventListener(STORY_STATUS_EVENT, handleStoryStatusChanged);
     };
-  }, [user?._id]);
+  }, [user?._id, showStoryRing]);
 
   const avatar = (
     <span
@@ -51,6 +56,8 @@ function StoryAvatar({
         <img
           src={user.avatar}
           alt={user?.name || "Profile"}
+          loading="lazy"
+          decoding="async"
           className="h-full w-full object-cover"
         />
       ) : (
@@ -59,10 +66,10 @@ function StoryAvatar({
     </span>
   );
 
-  if (!storyStatus.hasActiveStory) {
+  if (!showStoryRing || !storyStatus.hasActiveStory) {
     return (
       <span
-        className={`inline-flex shrink-0 overflow-hidden rounded-full ${sizeClassName} ${className}`}
+        className={`inline-flex shrink-0 overflow-hidden rounded-full border border-[var(--color-border)] ${sizeClassName} ${className}`}
       >
         {avatar}
       </span>
@@ -71,7 +78,7 @@ function StoryAvatar({
 
   const ringClasses = storyStatus.hasUnviewedStory
     ? "bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600"
-    : "bg-neutral-300 dark:bg-zinc-700";
+    : "bg-[var(--color-border-strong)]";
 
   return (
     <span
