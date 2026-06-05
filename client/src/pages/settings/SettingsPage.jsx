@@ -352,20 +352,16 @@ function SettingsPage() {
     return (
       <form onSubmit={handleProfileSubmit} className="space-y-6">
         <div className="flex items-center gap-4 border-b border-[var(--color-border)] pb-5 sm:gap-5 sm:pb-6">
-          <div className="shrink-0 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600 p-[2px]">
-            <div className="rounded-full bg-[var(--color-surface)] p-[3px]">
-              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-lg font-black text-[var(--color-text)] sm:h-16 sm:w-16 sm:text-xl">
-                {profileUser?.avatar ? (
-                  <img
-                    src={profileUser.avatar}
-                    alt={profileUser.name || "Profile"}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  avatarText
-                )}
-              </div>
-            </div>
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-muted)] text-lg font-black text-[var(--color-text)] sm:h-16 sm:w-16 sm:text-xl">
+            {profileUser?.avatar ? (
+              <img
+                src={profileUser.avatar}
+                alt={profileUser.name || "Profile"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              avatarText
+            )}
           </div>
 
           <div className="min-w-0">

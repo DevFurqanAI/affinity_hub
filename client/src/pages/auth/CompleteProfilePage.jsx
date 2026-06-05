@@ -155,20 +155,16 @@ function CompleteProfilePage() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="flex items-center gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4">
-          <div className="shrink-0 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600 p-[2px]">
-            <div className="rounded-full bg-[var(--color-surface)] p-[3px]">
-              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)] text-xl font-black text-[var(--color-text)]">
-                {avatarPreview ? (
-                  <img
-                    src={avatarPreview}
-                    alt="Avatar preview"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  avatarText
-                )}
-              </div>
-            </div>
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-muted)] text-xl font-black text-[var(--color-text)]">
+            {avatarPreview ? (
+              <img
+                src={avatarPreview}
+                alt="Avatar preview"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              avatarText
+            )}
           </div>
 
           <div className="min-w-0">

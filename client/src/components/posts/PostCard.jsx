@@ -268,13 +268,13 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
             <div className="min-w-0">
               <Link
                 to={`/profile/${author?.username}`}
-                className="block truncate text-xs font-black text-[var(--color-text)] hover:underline"
+                className="block truncate text-sm font-black text-[var(--color-text)] hover:underline"
               >
-                {author?.username}
+                {author?.name || author?.username || "Affinity User"}
               </Link>
 
               <p className="truncate text-[10px] font-semibold text-[var(--color-text-muted)]">
-                {author?.name}
+                {author?.username ? `@${author.username}` : "unknown_user"}
                 {createdDate ? ` • ${createdDate}` : ""}
               </p>
             </div>
@@ -287,13 +287,13 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
               onClick={() => setIsOptionsOpen((value) => !value)}
               aria-expanded={isOptionsOpen}
               aria-label="Post options"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-rose-500 dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-rose-500"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-text-muted)] transition hover:bg-[var(--color-surface-muted)] hover:text-rose-500"
             >
               <MoreIcon className="h-4 w-4" />
             </button>
 
             {isOptionsOpen ? (
-              <div className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-neutral-200 bg-white p-1.5 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-xl">
                 {isOwner ? (
                   <>
                     <button
@@ -302,7 +302,7 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
                         setIsEditing(true);
                         setIsOptionsOpen(false);
                       }}
-                      className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                      className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-[var(--color-text)] transition hover:bg-[var(--color-surface-muted)]"
                     >
                       Edit Post
                     </button>
@@ -313,7 +313,7 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
                         setIsOptionsOpen(false);
                         handleDeletePost();
                       }}
-                      className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                      className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-500 transition hover:bg-rose-500/10"
                     >
                       Delete Post
                     </button>
@@ -325,7 +325,7 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
                       setIsOptionsOpen(false);
                       setIsReportOpen(true);
                     }}
-                    className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-500 transition hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                    className="w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-rose-500 transition hover:bg-rose-500/10"
                   >
                     Report Post
                   </button>
@@ -425,7 +425,7 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
                 rows="3"
                 maxLength={1000}
                 disabled={isSaving}
-                className="w-full resize-none rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-900 outline-none transition focus:border-rose-500 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                className="w-full resize-none rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2.5 text-sm text-[var(--color-text)] outline-none transition focus:border-rose-500 disabled:opacity-60"
               />
 
               <div className="flex items-center gap-2">
@@ -445,19 +445,19 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
                     setIsEditing(false);
                   }}
                   disabled={isSaving}
-                  className="rounded-lg bg-neutral-100 px-4 py-2 text-[11px] font-black text-neutral-700 transition hover:bg-neutral-200 disabled:opacity-60 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-lg bg-[var(--color-surface-muted)] px-4 py-2 text-[11px] font-black text-[var(--color-text)] transition hover:bg-[var(--color-surface-elevated)] disabled:opacity-60"
                 >
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700 dark:text-zinc-300">
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--color-text)]">
               <Link
                 to={`/profile/${author?.username}`}
                 className="mr-2 font-black text-[var(--color-text)] hover:underline"
               >
-                {author?.username}
+                {author?.name || author?.username || "Affinity User"}
               </Link>
 
               {localPost.caption}

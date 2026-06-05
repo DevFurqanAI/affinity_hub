@@ -99,7 +99,7 @@ function CommentItem({ comment, onCommentUpdated, onCommentDeleted }) {
       {/* Avatar */}
       <Link
         to={`/profile/${comment?.author?.username}`}
-        className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-100 text-[11px] font-black text-neutral-700 transition-transform group-hover:scale-105 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+        className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] text-[11px] font-black text-[var(--color-text)] transition-transform group-hover:scale-105"
       >
         {comment?.author?.avatar ? (
           <img
@@ -122,11 +122,11 @@ function CommentItem({ comment, onCommentUpdated, onCommentDeleted }) {
               rows="2"
               maxLength={500}
               disabled={isLoading}
-              className="w-full resize-none rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-900 outline-none transition focus:border-rose-500 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+              className="w-full resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 py-2.5 text-sm text-[var(--color-text)] outline-none transition focus:border-rose-500 disabled:opacity-60"
             />
 
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[10px] font-bold text-neutral-400 dark:text-zinc-600">
+              <p className="text-[10px] font-bold text-[var(--color-text-muted)]">
                 {content.length}/500
               </p>
 
@@ -135,7 +135,7 @@ function CommentItem({ comment, onCommentUpdated, onCommentDeleted }) {
                   type="button"
                   onClick={handleCancelEdit}
                   disabled={isLoading}
-                  className="rounded-lg bg-neutral-100 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-neutral-700 transition hover:bg-neutral-200 disabled:opacity-60 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-lg bg-[var(--color-surface-muted)] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-[var(--color-text)] transition hover:bg-[var(--color-surface-elevated)] disabled:opacity-60"
                 >
                   Cancel
                 </button>
@@ -153,20 +153,31 @@ function CommentItem({ comment, onCommentUpdated, onCommentDeleted }) {
           </div>
         ) : (
           <>
-            <p className="whitespace-pre-wrap text-sm leading-5 text-neutral-700 dark:text-zinc-300">
+            <p className="whitespace-pre-wrap text-sm leading-5 text-[var(--color-text)]">
               <Link
                 to={`/profile/${comment?.author?.username}`}
-                className="mr-2 font-black text-neutral-900 hover:underline dark:text-white"
+                className="mr-2 font-black text-[var(--color-text)] hover:underline"
               >
-                {comment?.author?.username || comment?.author?.name}
+                {comment?.author?.name ||
+                  comment?.author?.username ||
+                  "Affinity User"}
               </Link>
 
               {comment?.content}
             </p>
 
             <div className="mt-1.5 flex flex-wrap items-center gap-3">
+              {comment?.author?.username ? (
+                <Link
+                  to={`/profile/${comment.author.username}`}
+                  className="text-[10px] font-semibold text-[var(--color-text-muted)] transition hover:text-[var(--color-text)]"
+                >
+                  @{comment.author.username}
+                </Link>
+              ) : null}
+
               {createdDate ? (
-                <span className="text-[10px] font-semibold text-neutral-400 dark:text-zinc-600">
+                <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">
                   {createdDate}
                 </span>
               ) : null}
@@ -177,7 +188,7 @@ function CommentItem({ comment, onCommentUpdated, onCommentDeleted }) {
                     type="button"
                     onClick={() => setIsEditing(true)}
                     disabled={isLoading}
-                    className="text-[10px] font-bold text-neutral-500 transition hover:text-neutral-900 disabled:opacity-60 dark:text-zinc-500 dark:hover:text-zinc-200"
+                    className="text-[10px] font-bold text-[var(--color-text-muted)] transition hover:text-[var(--color-text)] disabled:opacity-60"
                   >
                     Edit
                   </button>
