@@ -133,3 +133,59 @@ export const getLikeStatus = asyncHandler(async (req, res) => {
     )
   );
 });
+
+export const getPostLikedUsers = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+
+  const safePage = page > 0 ? page : 1;
+  const safeLimit = limit > 0 && limit <= 50 ? limit : 20;
+  const skip = (safePage - 1) * safeLimit;
+
+  const { post } = await canViewPost(postId, req.user._id);
+
+  const totalLikes = await Like.countDocuments({
+    post: post._id
+  });
+
+  const likes = await Like.find({
+    post: post._id
+  })
+    .populate({
+      path: "user",
+      select: "name username avatar bio followersCount followingCount status"
+    })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(safeLimit);
+
+  const users = likes
+    .map((like) => like.user)
+    .filter((user) => user && user.status === "active")
+    .map((user) => {
+      const userObject = user.toObject();
+
+      delete userObject.status;
+
+      return userObject;
+    });
+
+  const totalPages = Math.ceil(totalLikes / safeLimit) || 1;
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        users,
+        pagination: {
+          page: safePage,
+          limit: safeLimit,
+          totalPages,
+          totalLikes
+        }
+      },
+      "Post liked users fetched successfully"
+    )
+  );
+});

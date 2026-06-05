@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import CommentSection from "../comments/CommentSection.jsx";
+import LikesModal from "./LikesModal.jsx";
 import ReportModal from "../reports/ReportModal.jsx";
 import likeService from "../../services/likeService.js";
 import postService from "../../services/postService.js";
@@ -71,6 +72,7 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [isLikesOpen, setIsLikesOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
 
@@ -413,9 +415,14 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
 
         {/* Likes, Caption and Edit Form */}
         <div className="px-3 pb-3 sm:px-3.5 sm:pb-3.5">
-          <p className="text-xs font-black text-[var(--color-text)]">
+          <button
+            type="button"
+            onClick={() => setIsLikesOpen(true)}
+            disabled={likesCount === 0}
+            className="text-xs font-black text-[var(--color-text)] transition hover:text-rose-500 disabled:cursor-default disabled:hover:text-[var(--color-text)]"
+          >
             {likesCount} {likesCount === 1 ? "like" : "likes"}
-          </p>
+          </button>
 
           {isEditing ? (
             <div className="mt-3 space-y-3">
@@ -495,6 +502,13 @@ function PostCard({ post, onPostUpdated, onPostDeleted }) {
         onClose={() => setIsReportOpen(false)}
         targetId={localPost._id}
         targetType="post"
+      />
+      
+      <LikesModal
+        isOpen={isLikesOpen}
+        postId={localPost._id}
+        likesCount={likesCount}
+        onClose={() => setIsLikesOpen(false)}
       />
     </>
   );

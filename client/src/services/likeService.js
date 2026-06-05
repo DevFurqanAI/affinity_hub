@@ -14,6 +14,14 @@ const likeService = {
   getLikeStatus: async (postId) => {
     const response = await api.get(`/likes/${postId}/status`);
     return response.data;
+  },
+
+  getPostLikedUsers: async (postId, page = 1, limit = 20) => {
+    const response = await api.get(
+      `/likes/${postId}/users?page=${page}&limit=${limit}`
+    );
+
+    return response.data;
   }
 };
 
