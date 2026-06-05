@@ -4,9 +4,34 @@ import toast from "react-hot-toast";
 
 import Loader from "../common/Loader.jsx";
 import FollowButton from "../profile/FollowButton.jsx";
-import StoryAvatar from "../stories/StoryAvatar.jsx";
 import followService from "../../services/followService.js";
 import useAuthStore from "../../store/authStore.js";
+
+function NeutralAvatar({
+  user,
+  sizeClassName = "h-10 w-10",
+  textClassName = "text-xs"
+}) {
+  const avatarText = user?.name?.charAt(0)?.toUpperCase() || "A";
+
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] font-black text-[var(--color-text-muted)] ${sizeClassName} ${textClassName}`}
+    >
+      {user?.avatar ? (
+        <img
+          src={user.avatar}
+          alt={user.name || "User avatar"}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        avatarText
+      )}
+    </div>
+  );
+}
 
 function SuggestionsSidebar() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -44,6 +69,8 @@ function SuggestionsSidebar() {
     setSuggestions((previousSuggestions) =>
       previousSuggestions.filter((user) => user._id !== userId)
     );
+
+    window.dispatchEvent(new Event("affinity-refresh-stories"));
   };
 
   if (!isAuthenticated) {
@@ -53,18 +80,16 @@ function SuggestionsSidebar() {
   return (
     <aside className="hidden lg:col-span-4 lg:block">
       <div className="sticky top-8 space-y-5">
-        {/* Current Active User */}
         {currentUser ? (
           <div className="flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5">
             <Link
               to={`/profile/${currentUser.username}`}
               className="group flex min-w-0 items-center gap-2.5"
             >
-              <StoryAvatar
+              <NeutralAvatar
                 user={currentUser}
                 sizeClassName="h-10 w-10"
                 textClassName="text-xs"
-                className="transition-transform duration-200 group-hover:scale-105"
               />
 
               <div className="min-w-0">
@@ -80,7 +105,6 @@ function SuggestionsSidebar() {
           </div>
         ) : null}
 
-        {/* Suggestions */}
         <section className="space-y-3.5">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
@@ -125,11 +149,10 @@ function SuggestionsSidebar() {
                       to={`/profile/${user.username}`}
                       className="group flex min-w-0 flex-1 items-center gap-2.5"
                     >
-                      <StoryAvatar
+                      <NeutralAvatar
                         user={user}
                         sizeClassName="h-8 w-8"
                         textClassName="text-[11px]"
-                        className="transition-transform duration-200 group-hover:scale-105"
                       />
 
                       <div className="min-w-0">
@@ -165,7 +188,6 @@ function SuggestionsSidebar() {
           </div>
         </section>
 
-        {/* Footer */}
         <div className="px-1 pt-2 text-[9px] font-bold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
           <p>Affinity Core Platform</p>
           <p className="mt-1.5">&copy; 2026 Affinity Hub</p>

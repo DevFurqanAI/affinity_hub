@@ -26,8 +26,8 @@ function StoryCard({
         title={accessibleLabel}
         className="group/avatar flex shrink-0 flex-col items-center gap-1 text-center transition-transform active:scale-95 sm:gap-1.5"
       >
-        <div className="relative flex h-[62px] w-[62px] items-center justify-center rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-muted)] p-[3px] sm:h-[68px] sm:w-[68px]">
-          <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[var(--color-surface-muted)]">
+        <div className="relative flex h-[62px] w-[62px] items-center justify-center rounded-full sm:h-[68px] sm:w-[68px]">
+          <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full border border-[var(--color-border-strong)] bg-[var(--color-surface-muted)]">
             {owner?.avatar ? (
               <img
                 src={owner.avatar}
@@ -39,11 +39,11 @@ function StoryCard({
                 {avatarText}
               </span>
             )}
-
-            <span className="absolute bottom-0 right-0 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-follow)] text-xs font-bold leading-none text-white sm:h-5 sm:w-5 sm:text-sm">
-              +
-            </span>
           </div>
+
+          <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-follow)] text-sm font-black leading-none text-white shadow-md">
+            +
+          </span>
         </div>
 
         <p className="max-w-[58px] truncate text-[10px] font-bold leading-tight text-[var(--color-text-muted)] sm:max-w-[66px]">

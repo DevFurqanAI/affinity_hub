@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -23,20 +24,23 @@ function StoryViewerModal({
   const [isViewsOpen, setIsViewsOpen] = useState(false);
   const [views, setViews] = useState([]);
   const [isViewsLoading, setIsViewsLoading] = useState(false);
+  const [isMediaLoading, setIsMediaLoading] = useState(true);
+  const [hasMediaError, setHasMediaError] = useState(false);
 
   const currentStory = stories?.[currentIndex];
-
   const currentStoryId = currentStory?._id;
-
-  const isOwner =
-    Boolean(loggedInUser?._id && currentStory?.user?._id) &&
-    loggedInUser._id === currentStory.user._id;
-
   const owner = currentStory?.user;
 
-  const avatarText = owner?.name?.charAt(0)?.toUpperCase() || "A";
+  const isOwner =
+    Boolean(loggedInUser?._id && owner?._id) &&
+    loggedInUser._id === owner._id;
 
+  const avatarText = owner?.name?.charAt(0)?.toUpperCase() || "A";
   const totalStories = stories?.length || 0;
+
+  const ownerProfilePath = owner?.username
+    ? `/profile/${owner.username}`
+    : "";
 
   const progressBars = useMemo(() => {
     return Array.from({ length: totalStories }, (_, index) => index);
@@ -70,6 +74,42 @@ function StoryViewerModal({
   }, [isOpen, initialIndex]);
 
   useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+
+      if (event.key === "ArrowRight") {
+        goNext();
+      }
+
+      if (event.key === "ArrowLeft") {
+        goPrevious();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose, goNext, goPrevious]);
+
+  useEffect(() => {
+    setIsMediaLoading(true);
+    setHasMediaError(false);
+  }, [currentStoryId]);
+
+  useEffect(() => {
     const markViewed = async () => {
       if (!currentStoryId) {
         return;
@@ -78,19 +118,23 @@ function StoryViewerModal({
       try {
         await storyService.viewStory(currentStoryId);
         onStoryViewed?.(currentStoryId);
-      } catch {
-        // Viewing should not break the story modal.
+      } catch (error) {
+        const message =
+          error.response?.data?.message || "You cannot view this story";
+
+        toast.error(message);
+        onClose();
       }
     };
 
     if (isOpen && currentStoryId) {
       markViewed();
     }
-  }, [isOpen, currentStoryId, onStoryViewed]);
+  }, [isOpen, currentStoryId, onStoryViewed, onClose]);
 
   useEffect(() => {
-    if (!isOpen || !currentStoryId || isViewsOpen) {
-      return;
+    if (!isOpen || !currentStoryId || isViewsOpen || isMediaLoading) {
+      return undefined;
     }
 
     const interval = setInterval(() => {
@@ -110,14 +154,16 @@ function StoryViewerModal({
     return () => {
       clearInterval(interval);
     };
-  }, [isOpen, currentStoryId, isViewsOpen, goNext]);
+  }, [isOpen, currentStoryId, isViewsOpen, isMediaLoading, goNext]);
 
   if (!isOpen || !currentStory) {
     return null;
   }
 
   const handleDeleteStory = async () => {
-    const confirmed = window.confirm("Are you sure you want to delete this story?");
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this story?"
+    );
 
     if (!confirmed) {
       return;
@@ -166,10 +212,23 @@ function StoryViewerModal({
     }
   };
 
+  const ownerAvatar = (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-zinc-800 text-sm font-bold text-white">
+      {owner?.avatar ? (
+        <img
+          src={owner.avatar}
+          alt={owner.name || "Story owner"}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        avatarText
+      )}
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/92 p-2 backdrop-blur-sm sm:p-5">
-      <div className="relative flex h-[calc(100dvh-1rem)] w-full max-w-md flex-col overflow-hidden rounded-[26px] bg-black shadow-2xl sm:h-[90vh] sm:rounded-3xl">
-        {/* Progress and Story Owner Header */}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/92 p-0 backdrop-blur-sm sm:p-5">
+      <div className="relative flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-black shadow-2xl sm:h-[90vh] sm:rounded-3xl">
         <div className="absolute left-0 right-0 top-0 z-30 bg-gradient-to-b from-black/85 via-black/45 to-transparent px-4 pb-8 pt-4">
           <div className="flex gap-1">
             {progressBars.map((barIndex) => (
@@ -193,29 +252,39 @@ function StoryViewerModal({
           </div>
 
           <div className="mt-4 flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-zinc-800 text-sm font-bold text-white">
-                {owner?.avatar ? (
-                  <img
-                    src={owner.avatar}
-                    alt={owner.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  avatarText
-                )}
-              </div>
+            {ownerProfilePath ? (
+              <Link
+                to={ownerProfilePath}
+                onClick={onClose}
+                className="group flex min-w-0 items-center gap-3"
+              >
+                {ownerAvatar}
 
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-white">
-                  {owner?.name}
-                </p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-white group-hover:underline">
+                    {owner?.name || "Affinity User"}
+                  </p>
 
-                <p className="truncate text-xs text-white/65">
-                  @{owner?.username}
-                </p>
+                  <p className="truncate text-xs text-white/65 group-hover:text-white">
+                    @{owner?.username || "unknown"}
+                  </p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex min-w-0 items-center gap-3">
+                {ownerAvatar}
+
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-white">
+                    {owner?.name || "Affinity User"}
+                  </p>
+
+                  <p className="truncate text-xs text-white/65">
+                    @{owner?.username || "unknown"}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               type="button"
@@ -228,7 +297,6 @@ function StoryViewerModal({
           </div>
         </div>
 
-        {/* Navigation Tap Areas */}
         <button
           type="button"
           onClick={goPrevious}
@@ -243,12 +311,32 @@ function StoryViewerModal({
           aria-label="Next story"
         />
 
-        {/* Story Media */}
-        <div className="flex h-full items-center justify-center bg-black">
-          {currentStory.mediaType === "image" ? (
+        <div className="relative flex h-full items-center justify-center bg-black">
+          {isMediaLoading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
+              <Loader text="Loading story..." />
+            </div>
+          ) : null}
+
+          {hasMediaError ? (
+            <div className="px-6 text-center">
+              <p className="text-sm font-bold text-white">
+                Story could not be loaded
+              </p>
+
+              <p className="mt-2 text-xs text-white/60">
+                The media may be unavailable or expired.
+              </p>
+            </div>
+          ) : currentStory.mediaType === "image" ? (
             <img
               src={currentStory.media?.url}
               alt={currentStory.caption || "Story"}
+              onLoad={() => setIsMediaLoading(false)}
+              onError={() => {
+                setIsMediaLoading(false);
+                setHasMediaError(true);
+              }}
               className="max-h-full w-full object-contain"
             />
           ) : (
@@ -257,12 +345,16 @@ function StoryViewerModal({
               controls
               autoPlay
               playsInline
+              onLoadedData={() => setIsMediaLoading(false)}
+              onError={() => {
+                setIsMediaLoading(false);
+                setHasMediaError(true);
+              }}
               className="max-h-full w-full object-contain"
             />
           )}
         </div>
 
-        {/* Caption */}
         {currentStory.caption ? (
           <div
             className={`absolute left-4 right-4 z-20 rounded-2xl bg-black/65 p-3 text-sm leading-6 text-white backdrop-blur ${
@@ -273,7 +365,6 @@ function StoryViewerModal({
           </div>
         ) : null}
 
-        {/* Owner Story Actions */}
         {isOwner ? (
           <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black via-black/95 to-transparent px-4 pb-4 pt-10">
             <div className="flex gap-3">
@@ -298,7 +389,6 @@ function StoryViewerModal({
           </div>
         ) : null}
 
-        {/* Story Viewers Bottom Sheet */}
         {isViewsOpen ? (
           <>
             <button
@@ -347,16 +437,17 @@ function StoryViewerModal({
                       const viewerAvatarText =
                         viewer?.name?.charAt(0)?.toUpperCase() || "A";
 
-                      return (
-                        <div
-                          key={view._id}
-                          className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-muted)] p-3"
-                        >
+                      const viewerPath = viewer?.username
+                        ? `/profile/${viewer.username}`
+                        : "";
+
+                      const content = (
+                        <>
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--color-primary-soft)] text-sm font-bold text-[var(--color-primary)]">
                             {viewer?.avatar ? (
                               <img
                                 src={viewer.avatar}
-                                alt={viewer.name}
+                                alt={viewer.name || "Viewer"}
                                 className="h-full w-full object-cover"
                               />
                             ) : (
@@ -366,13 +457,31 @@ function StoryViewerModal({
 
                           <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-[var(--color-text)]">
-                              {viewer?.name}
+                              {viewer?.name || "Affinity User"}
                             </p>
 
                             <p className="truncate text-xs text-[var(--color-text-muted)]">
-                              @{viewer?.username}
+                              @{viewer?.username || "unknown"}
                             </p>
                           </div>
+                        </>
+                      );
+
+                      return viewerPath ? (
+                        <Link
+                          key={view._id}
+                          to={viewerPath}
+                          onClick={onClose}
+                          className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-muted)] p-3 transition hover:bg-[var(--color-surface-elevated)]"
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <div
+                          key={view._id}
+                          className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-muted)] p-3"
+                        >
+                          {content}
                         </div>
                       );
                     })
