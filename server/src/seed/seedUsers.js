@@ -7,9 +7,12 @@ export const demoUsersData = [
     email: "furqan@affinityhub.demo",
     password: "Demo@123456",
     bio: "Computer science student exploring MERN stack and UI design.",
+    authProvider: "local",
     role: "user",
     status: "active",
-    isVerified: true
+    isVerified: true,
+    profileSetupCompleted: true,
+    interestsSetupCompleted: true
   },
   {
     name: "Ali Raza",
@@ -17,9 +20,12 @@ export const demoUsersData = [
     email: "ali@affinityhub.demo",
     password: "Demo@123456",
     bio: "Fitness lover, cricket fan, and web development learner.",
+    authProvider: "local",
     role: "user",
     status: "active",
-    isVerified: true
+    isVerified: true,
+    profileSetupCompleted: true,
+    interestsSetupCompleted: true
   },
   {
     name: "Ayesha Khan",
@@ -27,9 +33,12 @@ export const demoUsersData = [
     email: "ayesha@affinityhub.demo",
     password: "Demo@123456",
     bio: "Sharing study tips, productivity ideas, and campus memories.",
+    authProvider: "local",
     role: "user",
     status: "active",
-    isVerified: true
+    isVerified: true,
+    profileSetupCompleted: true,
+    interestsSetupCompleted: true
   },
   {
     name: "Hamza Malik",
@@ -37,9 +46,12 @@ export const demoUsersData = [
     email: "hamza@affinityhub.demo",
     password: "Demo@123456",
     bio: "Tech enthusiast interested in AI, startups, and clean code.",
+    authProvider: "local",
     role: "user",
     status: "active",
-    isVerified: true
+    isVerified: true,
+    profileSetupCompleted: true,
+    interestsSetupCompleted: true
   },
   {
     name: "Maham Noor",
@@ -47,9 +59,12 @@ export const demoUsersData = [
     email: "maham@affinityhub.demo",
     password: "Demo@123456",
     bio: "Food, travel, photography, and little daily stories.",
+    authProvider: "local",
     role: "user",
     status: "active",
-    isVerified: true
+    isVerified: true,
+    profileSetupCompleted: true,
+    interestsSetupCompleted: true
   },
   {
     name: "Usman Tariq",
@@ -57,9 +72,12 @@ export const demoUsersData = [
     email: "usman@affinityhub.demo",
     password: "Demo@123456",
     bio: "Gaming, football, music, and backend engineering.",
+    authProvider: "local",
     role: "user",
     status: "active",
-    isVerified: true
+    isVerified: true,
+    profileSetupCompleted: true,
+    interestsSetupCompleted: true
   },
   {
     name: "Zara Ahmed",
@@ -67,14 +85,22 @@ export const demoUsersData = [
     email: "zara@affinityhub.demo",
     password: "Demo@123456",
     bio: "Art, design, lifestyle, and creative experiments.",
+    authProvider: "local",
     role: "user",
     status: "active",
-    isVerified: true
+    isVerified: true,
+    profileSetupCompleted: true,
+    interestsSetupCompleted: true
   }
 ];
 
 const seedUsers = async () => {
-  const users = await User.insertMany(demoUsersData);
+  const users = [];
+
+  for (const userData of demoUsersData) {
+    const user = await User.create(userData);
+    users.push(user);
+  }
 
   console.log(`${users.length} normal demo users created.`);
   console.log("Demo user password for all normal users: Demo@123456");

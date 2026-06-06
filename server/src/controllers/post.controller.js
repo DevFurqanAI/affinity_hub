@@ -3,6 +3,11 @@ import env from "../config/env.js";
 import Post from "../models/Post.model.js";
 import User from "../models/User.model.js";
 import Like from "../models/Like.model.js";
+import UserInterest from "../models/UserInterest.model.js";
+import {
+  syncPostInterestsFromCaption,
+  clearPostInterests
+} from "../utils/postInterestTagger.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
@@ -157,6 +162,12 @@ export const createPost = asyncHandler(async (req, res) => {
     visibility
   });
 
+  await syncPostInterestsFromCaption({
+    postId: post._id,
+    authorId: req.user._id,
+    caption
+  });
+
   const populatedPost = await Post.findById(post._id).populate(authorPopulate);
 
   const postsWithLikeStatus = await addLikeStatusToPosts(
@@ -220,6 +231,14 @@ export const updatePost = asyncHandler(async (req, res) => {
 
   await post.save();
 
+  if (caption !== undefined) {
+    await syncPostInterestsFromCaption({
+      postId: post._id,
+      authorId: req.user._id,
+      caption: post.caption
+    });
+  }
+
   const updatedPost = await Post.findById(post._id).populate(authorPopulate);
 
   const postsWithLikeStatus = await addLikeStatusToPosts(
@@ -256,6 +275,8 @@ export const deletePost = asyncHandler(async (req, res) => {
 
   post.isDeleted = true;
   await post.save({ validateBeforeSave: false });
+
+  await clearPostInterests(post._id);
 
   return res
     .status(200)
@@ -437,11 +458,69 @@ export const getExplorePosts = asyncHandler(async (req, res) => {
 
   const totalPosts = await Post.countDocuments(query);
 
-  const posts = await Post.find(query)
-    .populate(authorPopulate)
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
+  const myInterests = await UserInterest.find({
+    user: req.user._id
+  }).select("interest");
+
+  const myInterestIds = myInterests.map((item) => item.interest);
+
+  let posts = [];
+
+  if (myInterestIds.length > 0) {
+    posts = await Post.aggregate([
+      {
+        $match: query
+      },
+      {
+        $lookup: {
+          from: "postinterests",
+          localField: "_id",
+          foreignField: "post",
+          as: "interestLinks"
+        }
+      },
+      {
+        $addFields: {
+          matchedInterestsCount: {
+            $size: {
+              $filter: {
+                input: "$interestLinks",
+                as: "interestLink",
+                cond: {
+                  $in: ["$$interestLink.interest", myInterestIds]
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $sort: {
+          matchedInterestsCount: -1,
+          createdAt: -1
+        }
+      },
+      {
+        $skip: skip
+      },
+      {
+        $limit: limit
+      },
+      {
+        $project: {
+          interestLinks: 0
+        }
+      }
+    ]);
+
+    posts = await Post.populate(posts, authorPopulate);
+  } else {
+    posts = await Post.find(query)
+      .populate(authorPopulate)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+  }
 
   const postsWithLikeStatus = await addLikeStatusToPosts(posts, req.user._id);
 

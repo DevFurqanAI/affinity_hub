@@ -6,9 +6,12 @@ export const demoAdminData = {
   email: "admin@affinityhub.demo",
   password: "Admin@123456",
   bio: "Platform administrator for Affinity Hub demo environment.",
+  authProvider: "local",
   role: "admin",
   status: "active",
-  isVerified: true
+  isVerified: true,
+  profileSetupCompleted: true,
+  interestsSetupCompleted: true
 };
 
 const seedAdmin = async () => {
