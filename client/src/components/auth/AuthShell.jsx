@@ -121,23 +121,27 @@ function AuthShell({
         ) : null}
 
         <section
-          className={`relative flex min-h-[100dvh] items-center justify-center ${
+          className={`relative flex min-h-[100dvh] justify-center overflow-y-auto no-scrollbar ${
             wide
-              ? "w-full"
-              : "px-4 py-6 sm:px-8 lg:h-[100dvh] lg:overflow-hidden lg:px-14 lg:py-6"
+              ? "w-full items-center px-4 py-8 sm:px-6"
+              : "px-4 py-6 sm:px-8 lg:h-[100dvh] lg:min-h-0 lg:px-14 lg:py-0"
           }`}
         >
           <button
             type="button"
             onClick={handleSwitchAppearance}
             aria-label="Switch appearance"
-            className="absolute right-4 top-4 flex h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 text-xs font-black text-[var(--color-text-muted)] transition hover:text-[var(--color-text)] sm:right-7 sm:top-7"
+            className="absolute right-4 top-4 z-20 flex h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-3 text-xs font-black text-[var(--color-text-muted)] transition hover:text-[var(--color-text)] sm:right-7 sm:top-7"
           >
             <Palette className="h-4 w-4 text-amber-500" />
             <span className="hidden sm:inline">Appearance</span>
           </button>
 
-          <div className={`w-full ${wide ? "max-w-5xl" : "max-w-md"}`}>
+          <div
+            className={`w-full ${
+              wide ? "max-w-5xl" : "max-w-md"
+            } py-20 lg:my-auto`}
+          >
             <div className={`mb-7 ${wide ? "" : "lg:hidden"}`}>
               <Link to="/" aria-label="Affinity Hub Home">
                 <AffinityHubLogo compact />
