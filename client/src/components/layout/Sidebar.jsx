@@ -144,6 +144,7 @@ function Sidebar({
         <div className="flex flex-col items-start px-5 pt-7">
           <Link
             to="/home"
+            replace
             className="flex w-full min-w-0 items-center gap-3.5"
             aria-label="Affinity Hub Home"
           >
@@ -165,7 +166,7 @@ function Sidebar({
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1.5 px-3 py-7">
-          <NavLink to="/home" className={navLinkClasses}>
+          <NavLink to="/home" replace className={navLinkClasses}>
             {({ isActive }) => (
               <>
                 <Home
@@ -192,7 +193,7 @@ function Sidebar({
             <span className={labelClasses}>Search</span>
           </button>
 
-          <NavLink to="/explore" className={navLinkClasses}>
+          <NavLink to="/explore" replace className={navLinkClasses}>
             {({ isActive }) => (
               <>
                 <Compass
@@ -231,7 +232,7 @@ function Sidebar({
             <span className={labelClasses}>Create</span>
           </button>
 
-          <NavLink to="/me" className={navLinkClasses}>
+          <NavLink to="/me" replace className={navLinkClasses}>
             {({ isActive }) => (
               <>
                 <span
@@ -269,7 +270,7 @@ function Sidebar({
                   type="button"
                   onClick={() => {
                     setIsMoreOpen(false);
-                    navigate("/admin");
+                    navigate("/admin", { replace: true });
                   }}
                   className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]"
                 >
@@ -284,7 +285,7 @@ function Sidebar({
               type="button"
               onClick={() => {
                 setIsMoreOpen(false);
-                navigate("/settings");
+                navigate("/settings", { replace: true });
               }}
               className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-xs font-bold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-muted)] hover:text-[var(--color-text)]"
             >

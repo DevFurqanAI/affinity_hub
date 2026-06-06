@@ -9,6 +9,24 @@ function App() {
 
   useEffect(() => {
     initializeAuth();
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        initializeAuth();
+      }
+    };
+
+    const handlePageShow = () => {
+      initializeAuth();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pageshow", handlePageShow);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
   }, [initializeAuth]);
 
   return (

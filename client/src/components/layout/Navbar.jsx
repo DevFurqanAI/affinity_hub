@@ -117,6 +117,7 @@ function Navbar() {
         <div className="flex h-16 items-center justify-between px-4">
           <Link
             to={isAuthenticated ? "/home" : "/"}
+            replace={isAuthenticated}
             aria-label="Affinity Hub Home"
           >
             <AffinityHubLogo compact />
@@ -153,7 +154,7 @@ function Navbar() {
                     type="button"
                     onClick={() => {
                       setIsMobileMenuOpen(false);
-                      navigate("/settings");
+                      navigate("/settings", { replace: true });
                     }}
                     className={mobileMenuButtonClasses}
                   >
@@ -178,7 +179,7 @@ function Navbar() {
                         type="button"
                         onClick={() => {
                           setIsMobileMenuOpen(false);
-                          navigate("/admin");
+                          navigate("/admin", { replace: true });
                         }}
                         className={mobileMenuButtonClasses}
                       >
@@ -215,7 +216,7 @@ function Navbar() {
       {isAuthenticated ? (
         <header className="fixed left-[72px] right-0 top-0 z-20 hidden h-20 items-center border-b border-[var(--color-border)] bg-[var(--color-surface)]/90 backdrop-blur-md lg:flex">
           <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-6">
-            <Link to="/home" className="group">
+            <Link to="/home" replace className="group">
               <h1 className="mt-2 flex items-center gap-2 text-base font-black tracking-tight text-[var(--color-text)]">
                 <span>Affinity Central Timeline</span>
 
@@ -240,6 +241,7 @@ function Navbar() {
                 <NavLink
                   key={link.path}
                   to={link.path}
+                  replace
                   aria-label={link.label}
                   className={({ isActive }) =>
                     `mx-auto flex h-11 w-11 items-center justify-center rounded-xl transition ${
@@ -267,6 +269,7 @@ function Navbar() {
 
             <NavLink
               to="/me"
+              replace
               aria-label="Profile"
               className={({ isActive }) =>
                 `mx-auto flex h-11 w-11 items-center justify-center rounded-xl transition ${
