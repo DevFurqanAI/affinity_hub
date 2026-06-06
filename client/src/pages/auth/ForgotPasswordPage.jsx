@@ -43,7 +43,7 @@ function ForgotPasswordPage() {
     <AuthShell
       eyebrow="Account Recovery"
       title="Reset your password"
-      description="Enter your email address and we will send a verification code if password recovery is available for your account."
+      description="Enter your email address and we will send a verification code to help you recover your account."
       footer={
         <p>
           Remember your password?{" "}

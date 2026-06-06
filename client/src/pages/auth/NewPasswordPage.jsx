@@ -80,7 +80,7 @@ function NewPasswordPage() {
     <AuthShell
       eyebrow="New Password"
       title="Create a new password"
-      description="Choose a strong password for your Affinity Hub account."
+      description="Choose a new secure password for your Affinity Hub account."
       footer={
         <p>
           Need a new code?{" "}

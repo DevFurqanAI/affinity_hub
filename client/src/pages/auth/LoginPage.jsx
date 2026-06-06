@@ -49,7 +49,7 @@ function LoginPage() {
     <AuthShell
       eyebrow="Welcome Back"
       title="Sign in to Affinity Hub"
-      description="Return to your timeline, conversations, and student community."
+      description="Return to your timeline, conversations, and community updates."
       footer={
         <p>
           New to Affinity Hub?{" "}

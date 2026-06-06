@@ -89,13 +89,13 @@ function HomePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-4 sm:px-5 sm:py-6 md:px-6 md:py-8">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-        <section className="space-y-4 sm:space-y-6 lg:col-span-8">
+    <div className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+      <div className="grid grid-cols-1 gap-7 lg:grid-cols-12 lg:gap-10">
+        <section className="space-y-5 sm:space-y-6 lg:col-span-8">
           <StoryBar />
 
           <div className="flex items-center border-b border-[var(--color-border)]">
-            <div className="border-b-2 border-[var(--color-primary)] px-1 pb-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-primary)] sm:text-xs">
+            <div className="border-b-2 border-[var(--color-primary)] px-1 pb-3 text-xs font-black uppercase tracking-[0.22em] text-[var(--color-primary)] sm:text-sm">
               Following
             </div>
           </div>

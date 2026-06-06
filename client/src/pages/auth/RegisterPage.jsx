@@ -54,9 +54,9 @@ function RegisterPage() {
 
   return (
     <AuthShell
-      eyebrow="Join the Lounge"
+      eyebrow="Join Affinity Hub"
       title="Create your account"
-      description="Start with your secure login details. Your profile and interests come next."
+      description="Create your secure account. Your profile and interests come next."
       footer={
         <p>
           Already have an account?{" "}
@@ -150,7 +150,7 @@ function RegisterPage() {
         <div className="h-px flex-1 bg-[var(--color-border)]" />
       </div>
 
-      <GoogleAuthButton label="Google signup skips OTP and continues to profile setup." />
+      <GoogleAuthButton label="Continue with Google and set up your profile next." />
     </AuthShell>
   );
 }
