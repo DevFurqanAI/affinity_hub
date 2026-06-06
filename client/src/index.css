@@ -140,3 +140,53 @@ a {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Custom App Scrollbar */
+@media (min-width: 768px) and (pointer: fine) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      180deg,
+      rgba(244, 63, 94, 0.9),
+      rgba(245, 158, 11, 0.85)
+    );
+    border: 3px solid var(--color-bg);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      180deg,
+      rgba(251, 113, 133, 1),
+      rgba(251, 191, 36, 1)
+    );
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Hide scrollbars on touch/mobile while keeping scroll working */
+@media (max-width: 767px), (pointer: coarse) {
+  * {
+    scrollbar-width: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
