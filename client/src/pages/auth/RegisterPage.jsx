@@ -69,7 +69,7 @@ function RegisterPage() {
         </p>
       }
     >
-      <div className="mb-5 flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3">
+      <div className="mb-6 flex items-center justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-4 py-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-500">
             Step 1 of 3
@@ -87,7 +87,7 @@ function RegisterPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <Input
           id="email"
           label="Email Address"
@@ -140,7 +140,7 @@ function RegisterPage() {
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3">
+      <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-[var(--color-border)]" />
 
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
