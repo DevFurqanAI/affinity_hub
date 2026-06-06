@@ -62,7 +62,7 @@ function LoginPage() {
         </p>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           id="email"
           label="Email Address"
@@ -105,7 +105,7 @@ function LoginPage() {
         </Button>
       </form>
 
-      <div className="my-6 flex items-center gap-3">
+      <div className="my-5 flex items-center gap-3">
         <div className="h-px flex-1 bg-[var(--color-border)]" />
 
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)]">

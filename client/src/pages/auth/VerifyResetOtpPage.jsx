@@ -93,7 +93,7 @@ function VerifyResetOtpPage() {
     <AuthShell
       eyebrow="Security Verification"
       title="Enter reset code"
-      description="Enter the 6-digit code sent to your email address."
+      description="Enter the 6-digit recovery code sent to your email address."
       footer={
         <p>
           Used the wrong email?{" "}

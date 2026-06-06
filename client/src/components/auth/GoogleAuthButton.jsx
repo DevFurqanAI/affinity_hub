@@ -7,7 +7,7 @@ import { getNextOnboardingPath } from "../../utils/onboarding.js";
 
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-function GoogleAuthButton({ label = "Continue with Google" }) {
+function GoogleAuthButton({ label = "" }) {
   const navigate = useNavigate();
 
   const googleAuth = useAuthStore((state) => state.googleAuth);
@@ -23,32 +23,34 @@ function GoogleAuthButton({ label = "Continue with Google" }) {
 
     const result = await googleAuth(credential);
 
-    if (result.success) {
-      if (result.user?.status === "banned") {
-        navigate("/banned-account", { replace: true });
-        return;
-      }
-
-      navigate(getNextOnboardingPath(result.user), { replace: true });
+    if (!result.success) {
+      return;
     }
+
+    if (result.user?.status === "banned") {
+      navigate("/banned-account", { replace: true });
+      return;
+    }
+
+    navigate(getNextOnboardingPath(result.user), { replace: true });
   };
 
   const handleError = () => {
-    toast.error("Google login failed");
+    toast.error("Google login failed. Please try again.");
   };
 
   if (!googleClientId) {
     return (
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-center text-xs font-semibold text-amber-500">
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-center text-xs font-semibold text-amber-500">
         Google authentication is not configured.
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className={label ? "space-y-2" : ""}>
       <div
-        className={`flex justify-center overflow-hidden rounded-xl border border-[var(--color-border)] bg-white py-2 transition ${
+        className={`flex min-h-[52px] items-center justify-center overflow-hidden rounded-xl border border-[var(--color-border)] bg-white px-3 transition ${
           isLoading ? "pointer-events-none opacity-60" : ""
         }`}
       >
@@ -59,11 +61,12 @@ function GoogleAuthButton({ label = "Continue with Google" }) {
           shape="pill"
           size="large"
           text="continue_with"
+          width="320"
         />
       </div>
 
       {label ? (
-        <p className="text-center text-[11px] leading-5 text-[var(--color-text-muted)]">
+        <p className="text-center text-xs leading-5 text-[var(--color-text-muted)]">
           {label}
         </p>
       ) : null}
