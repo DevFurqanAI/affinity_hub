@@ -11,10 +11,8 @@ import Like from "../models/Like.model.js";
 import Notification from "../models/Notification.model.js";
 import Story from "../models/Story.model.js";
 import StoryView from "../models/StoryView.model.js";
-import Interest from "../models/Interest.model.js";
 import UserInterest from "../models/UserInterest.model.js";
 import PostInterest from "../models/PostInterest.model.js";
-import NewInterestCounter from "../models/NewInterestCounter.model.js";
 import Report from "../models/Report.model.js";
 import Ban from "../models/Ban.model.js";
 import Appeal from "../models/Appeal.model.js";
@@ -23,23 +21,11 @@ import Block from "../models/Block.model.js";
 import seedAdmin, { demoAdminData } from "./seedAdmin.js";
 import seedUsers, { demoUsersData } from "./seedUsers.js";
 import seedPosts from "./seedPosts.js";
+import seedModeration from "./seedModeration.js";
 
 const demoEmails = [
   demoAdminData.email,
   ...demoUsersData.map((user) => user.email)
-];
-
-const demoInterestNames = [
-  "technology",
-  "fitness",
-  "education",
-  "travel",
-  "food",
-  "gaming",
-  "music",
-  "sports",
-  "art",
-  "business"
 ];
 
 const stopIfProduction = () => {
@@ -96,20 +82,21 @@ const clearOldDemoData = async () => {
   const oldDemoStoryIds = oldDemoStories.map((story) => story._id);
 
   const oldDemoBans = await Ban.find({
-    user: {
-      $in: oldDemoUserIds
-    }
+    $or: [
+      {
+        user: {
+          $in: oldDemoUserIds
+        }
+      },
+      {
+        admin: {
+          $in: oldDemoUserIds
+        }
+      }
+    ]
   }).select("_id");
 
   const oldDemoBanIds = oldDemoBans.map((ban) => ban._id);
-
-  const oldDemoInterests = await Interest.find({
-    name: {
-      $in: demoInterestNames
-    }
-  }).select("_id");
-
-  const oldDemoInterestIds = oldDemoInterests.map((interest) => interest._id);
 
   console.log("Clearing old demo data safely...");
 
@@ -136,38 +123,14 @@ const clearOldDemoData = async () => {
     }),
 
     PostInterest.deleteMany({
-      $or: [
-        {
-          post: {
-            $in: oldDemoPostIds
-          }
-        },
-        {
-          interest: {
-            $in: oldDemoInterestIds
-          }
-        }
-      ]
+      post: {
+        $in: oldDemoPostIds
+      }
     }),
 
     UserInterest.deleteMany({
-      $or: [
-        {
-          user: {
-            $in: oldDemoUserIds
-          }
-        },
-        {
-          interest: {
-            $in: oldDemoInterestIds
-          }
-        }
-      ]
-    }),
-
-    NewInterestCounter.deleteMany({
-      interest: {
-        $in: oldDemoInterestIds
+      user: {
+        $in: oldDemoUserIds
       }
     }),
 
@@ -238,6 +201,16 @@ const clearOldDemoData = async () => {
               ...oldDemoStoryIds
             ]
           }
+        },
+        {
+          moderationBan: {
+            $in: oldDemoBanIds
+          }
+        },
+        {
+          reviewedBy: {
+            $in: oldDemoUserIds
+          }
         }
       ]
     }),
@@ -253,6 +226,11 @@ const clearOldDemoData = async () => {
           ban: {
             $in: oldDemoBanIds
           }
+        },
+        {
+          reviewedBy: {
+            $in: oldDemoUserIds
+          }
         }
       ]
     }),
@@ -266,6 +244,11 @@ const clearOldDemoData = async () => {
         },
         {
           admin: {
+            $in: oldDemoUserIds
+          }
+        },
+        {
+          endedBy: {
             $in: oldDemoUserIds
           }
         }
@@ -293,12 +276,6 @@ const clearOldDemoData = async () => {
       }
     }),
 
-    Interest.deleteMany({
-      _id: {
-        $in: oldDemoInterestIds
-      }
-    }),
-
     User.deleteMany({
       _id: {
         $in: oldDemoUserIds
@@ -322,8 +299,13 @@ const runSeed = async () => {
 
     const admin = await seedAdmin();
     const users = await seedUsers();
+    const seededContent = await seedPosts(users);
 
-    await seedPosts(users);
+    await seedModeration({
+      admin,
+      users,
+      posts: seededContent.posts
+    });
 
     console.log("");
     console.log("Demo seed completed successfully.");

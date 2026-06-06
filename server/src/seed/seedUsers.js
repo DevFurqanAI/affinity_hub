@@ -6,7 +6,7 @@ export const demoUsersData = [
     username: "furqan",
     email: "furqan@affinityhub.demo",
     password: "Demo@123456",
-    bio: "Computer science student exploring MERN stack and UI design.",
+    bio: "Computer science learner exploring MERN stack, UI design, and clean code.",
     authProvider: "local",
     role: "user",
     status: "active",
@@ -32,7 +32,7 @@ export const demoUsersData = [
     username: "ayesha",
     email: "ayesha@affinityhub.demo",
     password: "Demo@123456",
-    bio: "Sharing study tips, productivity ideas, and campus memories.",
+    bio: "Sharing study tips, productivity ideas, and daily learning moments.",
     authProvider: "local",
     role: "user",
     status: "active",
@@ -45,7 +45,7 @@ export const demoUsersData = [
     username: "hamza",
     email: "hamza@affinityhub.demo",
     password: "Demo@123456",
-    bio: "Tech enthusiast interested in AI, startups, and clean code.",
+    bio: "Tech enthusiast interested in AI, startups, and backend engineering.",
     authProvider: "local",
     role: "user",
     status: "active",
@@ -91,6 +91,19 @@ export const demoUsersData = [
     isVerified: true,
     profileSetupCompleted: true,
     interestsSetupCompleted: true
+  },
+  {
+    name: "Reported Demo User",
+    username: "reporteduser",
+    email: "reported@affinityhub.demo",
+    password: "Demo@123456",
+    bio: "Demo account used for admin moderation and appeal workflow.",
+    authProvider: "local",
+    role: "user",
+    status: "active",
+    isVerified: true,
+    profileSetupCompleted: true,
+    interestsSetupCompleted: true
   }
 ];
 
@@ -102,7 +115,7 @@ const seedUsers = async () => {
     users.push(user);
   }
 
-  console.log(`${users.length} normal demo users created.`);
+  console.log(`${users.length} demo users created.`);
   console.log("Demo user password for all normal users: Demo@123456");
 
   return users;

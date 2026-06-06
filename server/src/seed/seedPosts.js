@@ -1,12 +1,14 @@
 import Interest from "../models/Interest.model.js";
 import UserInterest from "../models/UserInterest.model.js";
-import PostInterest from "../models/PostInterest.model.js";
-import NewInterestCounter from "../models/NewInterestCounter.model.js";
 import Post from "../models/Post.model.js";
 import Comment from "../models/Comment.model.js";
 import Like from "../models/Like.model.js";
+import Notification from "../models/Notification.model.js";
+import NewInterestCounter from "../models/NewInterestCounter.model.js";
+import PostInterest from "../models/PostInterest.model.js";
+import { syncPostInterestsFromCaption } from "../utils/postInterestTagger.js";
 
-const interestData = [
+export const interestData = [
   {
     name: "technology",
     displayName: "Technology",
@@ -91,6 +93,8 @@ const createDemoInterests = async () => {
     interests.push(interest);
   }
 
+  console.log(`${interests.length} interests upserted.`);
+
   return interests;
 };
 
@@ -157,7 +161,8 @@ const createUserInterests = async (users, interests) => {
     hamza: ["technology", "business", "gaming"],
     maham: ["food", "travel", "art"],
     usman: ["gaming", "sports", "music"],
-    zara: ["art", "music", "travel"]
+    zara: ["art", "music", "travel"],
+    reporteduser: ["gaming", "sports", "music"]
   };
 
   const docs = [];
@@ -178,9 +183,7 @@ const createUserInterests = async (users, interests) => {
   }
 
   if (docs.length > 0) {
-    await UserInterest.insertMany(docs, {
-      ordered: false
-    });
+    await UserInterest.insertMany(docs);
   }
 
   console.log("Sample user interests created.");
@@ -191,19 +194,19 @@ const createPosts = async (users) => {
     {
       author: getUser(users, "furqan"),
       caption:
-        "Started polishing the Affinity Hub frontend today. Clean spacing and responsive UI make such a big difference!",
+        "Started polishing the Affinity Hub frontend today. React, Tailwind, and responsive UI make such a big difference.",
       visibility: "public"
     },
     {
       author: getUser(users, "furqan"),
       caption:
-        "DSA revision mode is on. Binary search trees and AVL rotations finally feel easier now.",
+        "DSA revision mode is on. Exam notes, AVL rotations, and study planning finally feel easier now.",
       visibility: "followers"
     },
     {
       author: getUser(users, "aliraza"),
       caption:
-        "Morning workout complete. Consistency beats motivation every single time.",
+        "Morning workout complete. Gym consistency beats motivation every single time.",
       visibility: "public"
     },
     {
@@ -215,7 +218,7 @@ const createPosts = async (users) => {
     {
       author: getUser(users, "hamza"),
       caption:
-        "Built a clean Express middleware today. Small reusable utilities save so much time later.",
+        "Built a clean Express middleware today. Backend utilities and API structure save so much time later.",
       visibility: "public"
     },
     {
@@ -227,19 +230,19 @@ const createPosts = async (users) => {
     {
       author: getUser(users, "usman"),
       caption:
-        "Late night gaming session with friends. Sometimes a break is also productivity.",
+        "Late night gaming session with friends. Sometimes a gaming break is also productivity.",
       visibility: "public"
     },
     {
       author: getUser(users, "zara"),
       caption:
-        "Working on a new poster design. Simple colors, clean typography, and lots of white space.",
+        "Working on a new poster design. Simple colors, clean typography, and creative spacing.",
       visibility: "public"
     },
     {
       author: getUser(users, "hamza"),
       caption:
-        "Startup idea: a student collaboration platform for group projects, deadlines, and peer review.",
+        "Startup idea: a collaboration platform for group projects, deadlines, and peer review.",
       visibility: "public"
     },
     {
@@ -250,12 +253,17 @@ const createPosts = async (users) => {
     }
   ];
 
-  const docs = postsData
-    .filter((post) => post.author)
-    .map((post) => ({
-      author: post.author._id,
-      caption: post.caption,
-      visibility: post.visibility,
+  const posts = [];
+
+  for (const item of postsData) {
+    if (!item.author) {
+      continue;
+    }
+
+    const post = await Post.create({
+      author: item.author._id,
+      caption: item.caption,
+      visibility: item.visibility,
       media: {
         url: "",
         publicId: ""
@@ -264,53 +272,20 @@ const createPosts = async (users) => {
       likesCount: 0,
       commentsCount: 0,
       isDeleted: false
-    }));
-
-  const posts = await Post.insertMany(docs);
-
-  console.log(`${posts.length} sample posts created.`);
-
-  return posts;
-};
-
-const createPostInterests = async (posts, interests) => {
-  const postInterestNames = [
-    ["technology", "education"],
-    ["education", "technology"],
-    ["fitness", "sports"],
-    ["education"],
-    ["technology", "business"],
-    ["food", "travel"],
-    ["gaming", "music"],
-    ["art"],
-    ["business", "technology"],
-    ["travel", "art"]
-  ];
-
-  const docs = [];
-
-  posts.forEach((post, index) => {
-    const names = postInterestNames[index] || [];
-
-    names.forEach((name) => {
-      const interest = getInterest(interests, name);
-
-      if (interest) {
-        docs.push({
-          post: post._id,
-          interest: interest._id
-        });
-      }
     });
-  });
 
-  if (docs.length > 0) {
-    await PostInterest.insertMany(docs, {
-      ordered: false
+    await syncPostInterestsFromCaption({
+      postId: post._id,
+      authorId: item.author._id,
+      caption: post.caption
     });
+
+    posts.push(post);
   }
 
-  console.log("Sample post interests created.");
+  console.log(`${posts.length} sample posts created and auto-tagged.`);
+
+  return posts;
 };
 
 const createComments = async (posts, users) => {
@@ -341,7 +316,7 @@ const createComments = async (posts, users) => {
     {
       post: posts[3],
       author: maham,
-      content: "This is actually so helpful for exams."
+      content: "This is actually helpful for exams."
     },
     {
       post: posts[4],
@@ -365,23 +340,28 @@ const createComments = async (posts, users) => {
     }
   ];
 
-  const docs = commentsData
-    .filter((comment) => comment.post && comment.author)
-    .map((comment) => ({
-      post: comment.post._id,
-      author: comment.author._id,
-      content: comment.content,
-      isDeleted: false
-    }));
+  const comments = [];
 
-  const comments = await Comment.insertMany(docs);
+  for (const item of commentsData) {
+    if (!item.post || !item.author) {
+      continue;
+    }
+
+    const comment = await Comment.create({
+      post: item.post._id,
+      author: item.author._id,
+      content: item.content,
+      isDeleted: false
+    });
+
+    comments.push(comment);
+  }
 
   for (const post of posts) {
-    const commentsCount = comments.filter(
+    post.commentsCount = comments.filter(
       (comment) => comment.post.toString() === post._id.toString()
     ).length;
 
-    post.commentsCount = commentsCount;
     await post.save({ validateBeforeSave: false });
   }
 
@@ -410,30 +390,87 @@ const createLikes = async (posts, users) => {
     [posts[9], getUser(users, "maham")]
   ];
 
-  const docs = likePairs
-    .filter(([post, user]) => post && user)
-    .map(([post, user]) => ({
+  const likes = [];
+
+  for (const [post, user] of likePairs) {
+    if (!post || !user) {
+      continue;
+    }
+
+    const like = await Like.create({
       post: post._id,
       user: user._id
-    }));
+    });
 
-  const likes = await Like.insertMany(docs, {
-    ordered: false
-  });
+    likes.push(like);
+  }
 
   for (const post of posts) {
-    const likesCount = likes.filter(
+    post.likesCount = likes.filter(
       (like) => like.post.toString() === post._id.toString()
     ).length;
 
-    post.likesCount = likesCount;
     await post.save({ validateBeforeSave: false });
   }
 
   console.log(`${likes.length} sample likes created.`);
+
+  return likes;
 };
 
-const updateInterestCounters = async (interests) => {
+const createNotifications = async ({ posts, comments, users }) => {
+  const furqan = getUser(users, "furqan");
+  const ali = getUser(users, "aliraza");
+  const ayesha = getUser(users, "ayesha");
+  const hamza = getUser(users, "hamza");
+
+  const notificationsData = [
+    {
+      receiver: furqan,
+      sender: ali,
+      type: "follow",
+      message: "Ali Raza started following you"
+    },
+    {
+      receiver: furqan,
+      sender: ayesha,
+      type: "like",
+      post: posts[0],
+      referenceId: posts[0]?._id,
+      message: "Ayesha Khan liked your post"
+    },
+    {
+      receiver: furqan,
+      sender: hamza,
+      type: "comment",
+      post: posts[0],
+      comment: comments[0],
+      referenceId: comments[0]?._id,
+      message: "Hamza Malik commented on your post"
+    }
+  ];
+
+  const docs = notificationsData
+    .filter((item) => item.receiver)
+    .map((item) => ({
+      receiver: item.receiver._id,
+      sender: item.sender?._id || null,
+      type: item.type,
+      post: item.post?._id || null,
+      comment: item.comment?._id || null,
+      referenceId: item.referenceId || null,
+      message: item.message,
+      isRead: false
+    }));
+
+  if (docs.length > 0) {
+    await Notification.insertMany(docs);
+  }
+
+  console.log(`${docs.length} sample notifications created.`);
+};
+
+const updateAllInterestCounters = async (interests) => {
   for (const interest of interests) {
     const userCount = await UserInterest.countDocuments({
       interest: interest._id
@@ -470,15 +507,22 @@ const seedPosts = async (users) => {
   await createUserInterests(users, interests);
 
   const posts = await createPosts(users);
+  const comments = await createComments(posts, users);
+  const likes = await createLikes(posts, users);
 
-  await createPostInterests(posts, interests);
-  await createComments(posts, users);
-  await createLikes(posts, users);
-  await updateInterestCounters(interests);
+  await createNotifications({
+    posts,
+    comments,
+    users
+  });
+
+  await updateAllInterestCounters(interests);
 
   return {
     interests,
-    posts
+    posts,
+    comments,
+    likes
   };
 };
 
