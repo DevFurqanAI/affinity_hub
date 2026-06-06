@@ -78,9 +78,11 @@ function StoryViewerModal({
       return undefined;
     }
 
-    const previousOverflow = document.body.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
 
     document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
@@ -99,7 +101,8 @@ function StoryViewerModal({
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onClose, goNext, goPrevious]);
@@ -227,8 +230,8 @@ function StoryViewerModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/90 p-0 backdrop-blur-sm sm:p-4">
-      <div className="relative flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-black shadow-2xl sm:h-[calc(100dvh-32px)] sm:max-h-[820px] sm:rounded-3xl">
+    <div className="fixed inset-0 z-[100] flex items-stretch justify-center overflow-hidden bg-black p-0">
+      <div className="relative flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-black shadow-2xl">
         <div className="absolute left-0 right-0 top-0 z-30 bg-gradient-to-b from-black/85 via-black/45 to-transparent px-4 pb-8 pt-4">
           <div className="flex gap-1">
             {progressBars.map((barIndex) => (
